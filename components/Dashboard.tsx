@@ -4,17 +4,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Property, AnalysisResult } from "@/lib/types";
 import type { NeighborhoodSummary } from "@/lib/data";
 import { usdCompact } from "@/lib/format";
+import { useLang, LanguageToggle } from "./LanguageProvider";
 import PropertyCard from "./PropertyCard";
 import AnalysisPanel from "./AnalysisPanel";
+import MarketSection from "./MarketSection";
+import MethodologySection from "./MethodologySection";
 
 type SortKey = "featured" | "priceAsc" | "priceDesc" | "newest";
 
-const SORTS: { key: SortKey; label: string }[] = [
-  { key: "featured", label: "Featured" },
-  { key: "priceAsc", label: "Price ↑" },
-  { key: "priceDesc", label: "Price ↓" },
-  { key: "newest", label: "Newest" },
-];
+const SORT_KEYS: SortKey[] = ["featured", "priceAsc", "priceDesc", "newest"];
 
 export interface DashboardStats {
   total: number;
@@ -32,6 +30,7 @@ export default function Dashboard({
   neighborhoods: NeighborhoodSummary[];
   stats: DashboardStats;
 }) {
+  const { t } = useLang();
   const [activeHood, setActiveHood] = useState<string>("All");
   const [sort, setSort] = useState<SortKey>("featured");
 
@@ -108,27 +107,42 @@ export default function Dashboard({
       <header className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950">
         <div className="bg-grid absolute inset-0 opacity-40" />
         <div className="relative mx-auto w-full max-w-6xl px-5 py-12 sm:py-16">
-          <div className="flex items-center gap-2 text-emerald-400">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6" />
-            </svg>
-            <span className="text-sm font-semibold uppercase tracking-widest">PropIntel</span>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-emerald-400">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6" />
+              </svg>
+              <span className="text-sm font-semibold uppercase tracking-widest">{t("hero.eyebrow")}</span>
+            </div>
+            <div className="flex items-center gap-1 sm:gap-3">
+              <nav className="hidden items-center gap-1 sm:flex">
+                <a href="#market" className="rounded-full px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-white">
+                  {t("nav.market")}
+                </a>
+                <a href="#method" className="rounded-full px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-white">
+                  {t("nav.method")}
+                </a>
+              </nav>
+              <LanguageToggle />
+            </div>
           </div>
-          <h1 className="mt-4 max-w-2xl text-3xl font-bold leading-tight text-white sm:text-4xl">
-            Find the undervalued deal before everyone else.
+          <h1 className="mt-6 max-w-2xl text-3xl font-bold leading-tight text-white sm:text-4xl">
+            {t("hero.title")}
           </h1>
           <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-300 sm:text-base">
-            Investment-grade scoring on every listing — value vs. comps, cap rate,
-            hidden risks, and a concrete action plan. Built for investors who screen
-            a hundred properties to buy one.
+            {t("hero.subtitle")}
+          </p>
+          <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            {t("hero.realData")}
           </p>
 
           <dl className="mt-8 grid max-w-2xl grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { label: "Properties", value: String(stats.total) },
-              { label: "Neighborhoods", value: String(stats.neighborhoods) },
-              { label: "Median price", value: usdCompact(stats.medianPrice) },
-              { label: "Opportunities", value: String(stats.opportunities) },
+              { label: t("hero.stat.properties"), value: String(stats.total) },
+              { label: t("hero.stat.neighborhoods"), value: String(stats.neighborhoods) },
+              { label: t("hero.stat.median"), value: usdCompact(stats.medianPrice) },
+              { label: t("hero.stat.opportunities"), value: String(stats.opportunities) },
             ].map((s) => (
               <div key={s.label} className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur">
                 <dd className="font-mono text-xl font-bold text-white">{s.value}</dd>
@@ -144,7 +158,7 @@ export default function Dashboard({
         <div className="mx-auto w-full max-w-6xl px-5 py-3">
           <div className="flex flex-wrap items-center gap-2">
             <FilterPill
-              label={`All (${stats.total})`}
+              label={`${t("controls.all")} (${stats.total})`}
               active={activeHood === "All"}
               onClick={() => setActiveHood("All")}
             />
@@ -157,15 +171,15 @@ export default function Dashboard({
               />
             ))}
             <div className="ml-auto flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5">
-              {SORTS.map((s) => (
+              {SORT_KEYS.map((k) => (
                 <button
-                  key={s.key}
-                  onClick={() => setSort(s.key)}
+                  key={k}
+                  onClick={() => setSort(k)}
                   className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                    sort === s.key ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900"
+                    sort === k ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900"
                   }`}
                 >
-                  {s.label}
+                  {t(`sort.${k}`)}
                 </button>
               ))}
             </div>
@@ -176,8 +190,13 @@ export default function Dashboard({
       {/* Grid */}
       <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-6">
         <p className="mb-4 text-sm text-slate-500">
-          Showing <span className="font-semibold text-slate-700">{filtered.length}</span>{" "}
-          {activeHood === "All" ? "properties" : `in ${activeHood}`}
+          {t("controls.showing", {
+            n: filtered.length,
+            scope:
+              activeHood === "All"
+                ? t("controls.scope.all")
+                : t("controls.scope.in", { name: activeHood }),
+          })}
         </p>
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((p) => (
@@ -190,6 +209,9 @@ export default function Dashboard({
           ))}
         </div>
       </main>
+
+      <MarketSection />
+      <MethodologySection />
 
       {/* Slide-over */}
       {panelProp && (
@@ -213,13 +235,13 @@ export default function Dashboard({
                     onClick={() => analyze(panelProp)}
                     className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
                   >
-                    Retry
+                    {t("panel.retry")}
                   </button>
                   <button
                     onClick={close}
                     className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
                   >
-                    Close
+                    {t("panel.close")}
                   </button>
                 </div>
               </div>

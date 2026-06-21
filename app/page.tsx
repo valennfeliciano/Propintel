@@ -1,6 +1,7 @@
 import { getAllProperties, getNeighborhoods } from "@/lib/data";
 import { analyzeProperty } from "@/lib/analysisService";
 import Dashboard, { type DashboardStats } from "@/components/Dashboard";
+import { LanguageProvider } from "@/components/LanguageProvider";
 
 export default function Home() {
   const properties = getAllProperties();
@@ -20,6 +21,8 @@ export default function Home() {
   };
 
   return (
-    <Dashboard properties={properties} neighborhoods={neighborhoods} stats={stats} />
+    <LanguageProvider>
+      <Dashboard properties={properties} neighborhoods={neighborhoods} stats={stats} />
+    </LanguageProvider>
   );
 }

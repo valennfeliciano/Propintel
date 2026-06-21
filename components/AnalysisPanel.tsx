@@ -1,5 +1,8 @@
+"use client";
+
 import type { Property, AnalysisResult } from "@/lib/types";
 import { usd, usdCompact, scoreTone, recTone } from "@/lib/format";
+import { useLang } from "./LanguageProvider";
 
 function ScoreBar({ label, score }: { label: string; score: number }) {
   const tone = scoreTone(score);
@@ -46,6 +49,7 @@ function Metric({
 }
 
 function Skeleton() {
+  const { t } = useLang();
   return (
     <div className="space-y-6 p-6">
       <div className="space-y-3">
@@ -70,7 +74,7 @@ function Skeleton() {
           <div key={i} className="h-4 rounded bg-slate-100" />
         ))}
       </div>
-      <p className="text-center text-sm text-slate-400">Analyzing property…</p>
+      <p className="text-center text-sm text-slate-400">{t("panel.analyzing")}</p>
     </div>
   );
 }
@@ -86,6 +90,7 @@ export default function AnalysisPanel({
   loading: boolean;
   onClose: () => void;
 }) {
+  const { t } = useLang();
   const m = analysis?.metrics;
   const rec = analysis ? recTone(analysis.recommendation) : null;
 
@@ -105,7 +110,7 @@ export default function AnalysisPanel({
         </div>
         <button
           onClick={onClose}
-          aria-label="Close analysis"
+          aria-label={t("panel.close")}
           className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -123,14 +128,14 @@ export default function AnalysisPanel({
             <div className="flex items-center gap-2.5">
               <span className={`h-2.5 w-2.5 rounded-full ${rec!.dot}`} />
               <span className={`text-base font-bold ${rec!.text}`}>
-                {analysis.recommendation}
+                {t(`verdict.${analysis.recommendation}`)}
               </span>
             </div>
             <div className="text-right">
               <span className="font-mono text-2xl font-bold text-slate-900">
                 {analysis.overallScore}
               </span>
-              <span className="ml-1 text-xs text-slate-400">/100 overall</span>
+              <span className="ml-1 text-xs text-slate-400">/100 {t("panel.overall")}</span>
             </div>
           </div>
 
@@ -138,32 +143,32 @@ export default function AnalysisPanel({
 
           {/* Scores */}
           <div className="space-y-4">
-            <ScoreBar label="Value (vs. comps)" score={analysis.scoreValue} />
-            <ScoreBar label="Opportunity (upside)" score={analysis.scoreOpportunity} />
+            <ScoreBar label={t("panel.value")} score={analysis.scoreValue} />
+            <ScoreBar label={t("panel.opportunity")} score={analysis.scoreOpportunity} />
           </div>
 
           {/* Metrics */}
           <div>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Underwriting
+              {t("panel.underwriting")}
             </h3>
             <div className="grid grid-cols-3 gap-3">
               <Metric
-                label="$/sqft"
+                label={t("metric.ppsf")}
                 value={`$${m.pricePerSqft}`}
-                hint={`${m.pricePerSqftDeltaPct > 0 ? "+" : ""}${m.pricePerSqftDeltaPct}% vs avg`}
+                hint={t("metric.vsAvg", { v: `${m.pricePerSqftDeltaPct > 0 ? "+" : ""}${m.pricePerSqftDeltaPct}` })}
                 good={m.pricePerSqftDeltaPct <= 0}
               />
-              <Metric label="Cap rate" value={`${m.capRatePct}%`} good={m.capRatePct >= 4} />
-              <Metric label="Rent/price" value={`${m.rentToPricePct}%`} good={m.rentToPricePct >= 0.6} />
-              <Metric label="GRM" value={`${m.grossRentMultiplier}`} />
+              <Metric label={t("metric.cap")} value={`${m.capRatePct}%`} good={m.capRatePct >= 4} />
+              <Metric label={t("metric.rent")} value={`${m.rentToPricePct}%`} good={m.rentToPricePct >= 0.6} />
+              <Metric label={t("metric.grm")} value={`${m.grossRentMultiplier}`} />
               <Metric
-                label="Est. cash flow"
+                label={t("metric.cashflow")}
                 value={`${usdCompact(m.estMonthlyCashFlow)}/mo`}
                 good={m.estMonthlyCashFlow >= 0}
               />
               <Metric
-                label="Age"
+                label={t("metric.age")}
                 value={m.ageYears != null ? `${m.ageYears} yrs` : "—"}
                 good={m.ageYears != null ? m.ageYears <= 30 : null}
               />
@@ -174,7 +179,7 @@ export default function AnalysisPanel({
           {analysis.highlights.length > 0 && (
             <div>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-600">
-                Highlights
+                {t("panel.highlights")}
               </h3>
               <ul className="space-y-2">
                 {analysis.highlights.map((h, i) => (
@@ -191,7 +196,7 @@ export default function AnalysisPanel({
           {analysis.riskFactors.length > 0 && (
             <div>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-600">
-                Risk factors
+                {t("panel.risks")}
               </h3>
               <ul className="space-y-2">
                 {analysis.riskFactors.map((r, i) => (
@@ -207,7 +212,7 @@ export default function AnalysisPanel({
           {/* Action plan */}
           <div>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Action plan
+              {t("panel.actionPlan")}
             </h3>
             <ol className="space-y-2">
               {analysis.actionPlan.map((step, i) => (
@@ -229,7 +234,7 @@ export default function AnalysisPanel({
               rel="noopener noreferrer"
               className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
             >
-              Search on Zillow ↗
+              {t("panel.zillow")}
             </a>
             <a
               href={property.mapUrl}
@@ -237,18 +242,17 @@ export default function AnalysisPanel({
               rel="noopener noreferrer"
               className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
             >
-              View on map ↗
+              {t("panel.map")}
             </a>
           </div>
 
           {/* Provenance + disclaimer */}
           <div className="space-y-1 border-t border-slate-100 pt-4">
             <p className="font-mono text-[11px] text-slate-400">
-              engine: {analysis.generatedBy}
+              {t("panel.engine")}: {analysis.generatedBy}
             </p>
             <p className="text-[11px] leading-relaxed text-slate-400">
-              Educational analysis on curated sample data — not financial advice.
-              Verify all figures independently before transacting.
+              {t("panel.disclaimer")}
             </p>
           </div>
         </div>
