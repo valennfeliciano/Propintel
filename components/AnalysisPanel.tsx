@@ -162,7 +162,11 @@ export default function AnalysisPanel({
                 value={`${usdCompact(m.estMonthlyCashFlow)}/mo`}
                 good={m.estMonthlyCashFlow >= 0}
               />
-              <Metric label="Age" value={`${m.ageYears} yrs`} good={m.ageYears <= 30} />
+              <Metric
+                label="Age"
+                value={m.ageYears != null ? `${m.ageYears} yrs` : "—"}
+                good={m.ageYears != null ? m.ageYears <= 30 : null}
+              />
             </div>
           </div>
 

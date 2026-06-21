@@ -8,15 +8,15 @@ export default function Home() {
 
   const prices = [...properties.map((p) => p.price)].sort((a, b) => a - b);
   const medianPrice = prices[Math.floor(prices.length / 2)];
-  const strongBuys = properties.filter(
-    (p) => analyzeProperty(p).recommendation === "Strong Buy",
+  const opportunities = properties.filter(
+    (p) => analyzeProperty(p).recommendation !== "Pass",
   ).length;
 
   const stats: DashboardStats = {
     total: properties.length,
     neighborhoods: neighborhoods.length,
     medianPrice,
-    strongBuys,
+    opportunities,
   };
 
   return (

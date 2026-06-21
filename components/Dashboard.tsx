@@ -20,7 +20,7 @@ export interface DashboardStats {
   total: number;
   neighborhoods: number;
   medianPrice: number;
-  strongBuys: number;
+  opportunities: number;
 }
 
 export default function Dashboard({
@@ -128,7 +128,7 @@ export default function Dashboard({
               { label: "Properties", value: String(stats.total) },
               { label: "Neighborhoods", value: String(stats.neighborhoods) },
               { label: "Median price", value: usdCompact(stats.medianPrice) },
-              { label: "Strong-buy signals", value: String(stats.strongBuys) },
+              { label: "Opportunities", value: String(stats.opportunities) },
             ].map((s) => (
               <div key={s.label} className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur">
                 <dd className="font-mono text-xl font-bold text-white">{s.value}</dd>

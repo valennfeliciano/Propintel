@@ -79,7 +79,7 @@ export default function PropertyCard({
           <Stat label="Beds" value={String(property.beds)} />
           <Stat label="Baths" value={String(property.baths)} />
           <Stat label="Sqft" value={num(property.sqft)} />
-          <Stat label="Built" value={String(property.yearBuilt)} />
+          <Stat label="Built" value={property.yearBuilt ? String(property.yearBuilt) : "—"} />
         </div>
 
         <button

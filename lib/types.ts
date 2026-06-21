@@ -27,15 +27,23 @@ export interface Property {
   propertyTaxAnnual: number;
   hoaMonthly: number;
 
-  // Curated neighborhood comps — the "comps" the engine reasons against.
+  // Real neighborhood comps — median across the ZIP (Zillow aggregate).
   neighborhoodAvgPricePerSqft: number;
   neighborhoodMedianPrice: number;
-  neighborhoodTrendPct: number; // YoY appreciation %
-  neighborhoodDemandScore: number; // 0-100
+
+  // Real signals scraped from the listing.
+  zestimate: number | null;
+  rentSource: "zillow" | "estimated";
+  priceCutCount: number;
+  lastCutPct: number | null; // % of the most recent price reduction (negative)
+  lat: number;
+  lng: number;
 
   description: string;
-  imageUrl: string;
+  imageUrl: string; // primary photo
+  photos: string[]; // full gallery
   mapUrl: string;
+  detailUrl: string; // real Zillow listing URL
   zillowSearchUrl: string;
 }
 
@@ -49,8 +57,9 @@ export interface AnalysisMetrics {
   capRatePct: number; // projected, after operating expenses
   rentToPricePct: number; // monthly rent / price
   meetsOnePercentRule: boolean;
-  ageYears: number;
+  ageYears: number | null;
   estMonthlyCashFlow: number; // rough, 20% down, ~7% rate, 30yr
+  discountToZestimatePct: number | null; // price vs Zestimate (negative = below)
 }
 
 export interface AnalysisResult {

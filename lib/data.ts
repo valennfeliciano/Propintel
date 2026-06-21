@@ -18,8 +18,6 @@ export interface NeighborhoodSummary {
   count: number;
   medianPrice: number;
   avgPricePerSqft: number;
-  trendPct: number;
-  demandScore: number;
 }
 
 export function getNeighborhoods(): NeighborhoodSummary[] {
@@ -31,11 +29,9 @@ export function getNeighborhoods(): NeighborhoodSummary[] {
         count: 0,
         medianPrice: p.neighborhoodMedianPrice,
         avgPricePerSqft: p.neighborhoodAvgPricePerSqft,
-        trendPct: p.neighborhoodTrendPct,
-        demandScore: p.neighborhoodDemandScore,
       });
     }
     map.get(p.neighborhood)!.count += 1;
   }
-  return [...map.values()].sort((a, b) => b.demandScore - a.demandScore);
+  return [...map.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
