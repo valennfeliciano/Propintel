@@ -15,6 +15,8 @@ const raw = JSON.parse(readFileSync(join(dataDir, "zillow-raw.json"), "utf8"));
 const comps = JSON.parse(readFileSync(join(dataDir, "comps.json"), "utf8")).byZip;
 // Verbatim Zillow listing copy (preferred over the condensed raw text).
 const verbatim = JSON.parse(readFileSync(join(dataDir, "descriptions.json"), "utf8")).byZpid;
+// Fuller 12-photo sets (preferred over the 5-photo set in zillow-raw.json).
+const photoSets = JSON.parse(readFileSync(join(dataDir, "photos.json"), "utf8")).byZpid;
 
 const CURRENT_YEAR = 2026;
 
@@ -97,8 +99,8 @@ const properties = raw.map((r, i) => {
     lat: r.lat,
     lng: r.lng,
     description: verbatim[r.zpid] ?? r.description,
-    imageUrl: r.photos[0],
-    photos: r.photos,
+    imageUrl: (photoSets[r.zpid] ?? r.photos)[0],
+    photos: photoSets[r.zpid] ?? r.photos,
     mapUrl: `https://www.google.com/maps/search/?api=1&query=${q}`,
     detailUrl: r.url,
     zillowSearchUrl: r.url,
