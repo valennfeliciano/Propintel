@@ -17,6 +17,14 @@ const comps = JSON.parse(readFileSync(join(dataDir, "comps.json"), "utf8")).byZi
 const verbatim = JSON.parse(readFileSync(join(dataDir, "descriptions.json"), "utf8")).byZpid;
 // Fuller 12-photo sets (preferred over the 5-photo set in zillow-raw.json).
 const photoSets = JSON.parse(readFileSync(join(dataDir, "photos.json"), "utf8")).byZpid;
+// Real observed area rent by ZIP (Zillow ZORI).
+const rents = JSON.parse(readFileSync(join(dataDir, "rents.json"), "utf8"));
+// Real per-property rent AVM (RentCast) — preferred over Zestimate/model for the cap-rate math.
+let rentcast = {};
+try { rentcast = JSON.parse(readFileSync(join(dataDir, "rentcast.json"), "utf8")).byZpid || {}; } catch { /* not fetched yet */ }
+// Optional public "listed by" contacts (populated when scraped; null otherwise).
+let contacts = {};
+try { contacts = JSON.parse(readFileSync(join(dataDir, "contacts.json"), "utf8")).byZpid || {}; } catch { /* not scraped yet */ }
 
 const CURRENT_YEAR = 2026;
 
@@ -87,12 +95,17 @@ const properties = raw.map((r, i) => {
     yearBuilt: r.yearBuilt ?? null,
     condition: deriveCondition(r.description || "", ageYears),
     daysOnMarket: r.daysOnZillow ?? 0,
-    estimatedRent: rentZ ?? estRent(r.price),
-    rentSource: rentZ ? "zillow" : "estimated",
+    estimatedRent: rentcast[r.zpid]?.rent ?? rentZ ?? estRent(r.price),
+    rentSource: rentcast[r.zpid] ? "rentcast" : rentZ ? "zillow" : "estimated",
+    rentLow: rentcast[r.zpid]?.low ?? null,
+    rentHigh: rentcast[r.zpid]?.high ?? null,
     propertyTaxAnnual: r.taxAnnual ?? Math.round((r.price * 0.019) / 50) * 50,
     hoaMonthly: r.hoa ?? 0,
     neighborhoodAvgPricePerSqft: comp.medianPpsf ?? Math.round(r.price / r.sqft),
     neighborhoodMedianPrice: comp.medianPrice ?? r.price,
+    areaRent: rents.byZip[r.zip] ?? null,
+    areaRentAsOf: rents.asOf,
+    contact: contacts[r.zpid] ?? null,
     zestimate: r.zestimate ?? null,
     priceCutCount: r.priceCutCount ?? 0,
     lastCutPct: r.lastCutPct ?? null,

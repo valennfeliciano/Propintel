@@ -1,0 +1,19 @@
+{
+  "_source": "Zillow Observed Rent Index (ZORI), Zillow Research. Public CSV, no API key.",
+  "_metric": "Smoothed, seasonally-adjusted typical market rent by ZIP (all homes + multifamily). A real, observed area-rent benchmark, not a model.",
+  "asOf": "2026-05-31",
+  "byZip": {
+    "78704": 1850,
+    "78717": 1569,
+    "78727": 1482,
+    "78736": 1455,
+    "78737": 1862,
+    "78738": 2829,
+    "78739": 3565,
+    "78744": 1437,
+    "78747": 1611,
+    "78748": 1367,
+    "78753": 1267,
+    "78758": 1499
+  }
+}

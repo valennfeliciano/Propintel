@@ -3,6 +3,7 @@
 import type { Property, AnalysisResult } from "@/lib/types";
 import { usd, usdCompact, scoreTone, recTone } from "@/lib/format";
 import { useLang } from "./LanguageProvider";
+import { HeartButton } from "./FavoritesProvider";
 import PhotoCarousel from "./PhotoCarousel";
 
 function ScoreBar({ label, score }: { label: string; score: number }) {
@@ -109,15 +110,18 @@ export default function AnalysisPanel({
             {property.sqft.toLocaleString()} sqft
           </p>
         </div>
-        <button
-          onClick={onClose}
-          aria-label={t("panel.close")}
-          className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <path d="M18 6 6 18M6 6l12 12" />
-          </svg>
-        </button>
+        <div className="flex flex-none items-center gap-1.5">
+          <HeartButton id={property.id} />
+          <button
+            onClick={onClose}
+            aria-label={t("panel.close")}
+            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -177,6 +181,23 @@ export default function AnalysisPanel({
               />
             </div>
           </div>
+
+          {/* Real area rent (Zillow ZORI) */}
+          {property.areaRent != null && (
+            <div className="flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50/50 px-4 py-3">
+              <div>
+                <div className="text-sm font-medium text-slate-700">{t("panel.areaRent")}</div>
+                <div className="text-[11px] text-slate-400">
+                  {t("panel.areaRentSrc", {
+                    date: property.areaRentAsOf
+                      ? new Date(property.areaRentAsOf).toLocaleDateString("en-US", { month: "short", year: "numeric" })
+                      : "",
+                  })}
+                </div>
+              </div>
+              <div className="font-mono text-lg font-bold text-emerald-700">{usd(property.areaRent)}/mo</div>
+            </div>
+          )}
 
           {/* Highlights */}
           {analysis.highlights.length > 0 && (
@@ -257,6 +278,38 @@ export default function AnalysisPanel({
               className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-center text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
             >
               {t("panel.map")}
+            </a>
+          </div>
+
+          {/* Contact the people in charge of the listing */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              {t("panel.contact")}
+            </h3>
+            {property.contact?.agent ? (
+              <p className="text-sm text-slate-700">
+                {t("panel.listedBy")}{" "}
+                <span className="font-semibold">{property.contact.agent}</span>
+                {property.contact.broker ? `, ${property.contact.broker}` : ""}
+                {property.contact.agentPhone && (
+                  <>
+                    {" · "}
+                    <a href={`tel:${property.contact.agentPhone}`} className="font-medium text-emerald-700 hover:underline">
+                      {property.contact.agentPhone}
+                    </a>
+                  </>
+                )}
+              </p>
+            ) : (
+              <p className="text-xs leading-relaxed text-slate-500">{t("panel.contactNote")}</p>
+            )}
+            <a
+              href={property.detailUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-600"
+            >
+              {t("panel.contactCta")}
             </a>
           </div>
 

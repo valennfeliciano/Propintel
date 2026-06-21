@@ -3,6 +3,7 @@ import { analyzeProperty } from "@/lib/analysisService";
 import { getMarket } from "@/lib/market";
 import Dashboard, { type DashboardStats } from "@/components/Dashboard";
 import { LanguageProvider } from "@/components/LanguageProvider";
+import { FavoritesProvider } from "@/components/FavoritesProvider";
 
 export default async function Home() {
   const market = await getMarket();
@@ -25,12 +26,14 @@ export default async function Home() {
 
   return (
     <LanguageProvider>
-      <Dashboard
-        properties={properties}
-        neighborhoods={neighborhoods}
-        stats={stats}
-        market={market}
-      />
+      <FavoritesProvider>
+        <Dashboard
+          properties={properties}
+          neighborhoods={neighborhoods}
+          stats={stats}
+          market={market}
+        />
+      </FavoritesProvider>
     </LanguageProvider>
   );
 }

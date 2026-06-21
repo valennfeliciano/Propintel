@@ -4,6 +4,13 @@ export type PropertyCondition = "Excellent" | "Good" | "Fair" | "Needs Work";
 
 export type PropertyType = "Single-Family" | "Condo" | "Townhouse";
 
+export interface ListingContact {
+  agent: string | null;
+  agentPhone: string | null;
+  broker: string | null;
+  brokerPhone: string | null;
+}
+
 export interface Property {
   id: string; // e.g. "prop_001"
   address: string;
@@ -23,17 +30,24 @@ export interface Property {
   daysOnMarket: number;
 
   // Investment inputs
-  estimatedRent: number; // monthly, market rent estimate
+  estimatedRent: number; // monthly market rent (per-property, real when sourced)
+  rentLow: number | null; // RentCast rent range (low)
+  rentHigh: number | null; // RentCast rent range (high)
   propertyTaxAnnual: number;
   hoaMonthly: number;
 
   // Real neighborhood comps — median across the ZIP (Zillow aggregate).
   neighborhoodAvgPricePerSqft: number;
   neighborhoodMedianPrice: number;
+  // Real observed area rent for the ZIP (Zillow ZORI) — not modeled.
+  areaRent: number | null;
+  areaRentAsOf: string | null;
+  // Public "listed by" contact (null until enriched).
+  contact: ListingContact | null;
 
   // Real signals scraped from the listing.
   zestimate: number | null;
-  rentSource: "zillow" | "estimated";
+  rentSource: "rentcast" | "zillow" | "estimated";
   priceCutCount: number;
   lastCutPct: number | null; // % of the most recent price reduction (negative)
   lat: number;

@@ -4,6 +4,7 @@ import Image from "next/image";
 import type { Property } from "@/lib/types";
 import { usdCompact, num } from "@/lib/format";
 import { useLang } from "./LanguageProvider";
+import { HeartButton } from "./FavoritesProvider";
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
@@ -51,9 +52,7 @@ export default function PropertyCard({
             {property.neighborhood}
           </span>
         </div>
-        <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2.5 py-1 text-xs font-medium text-slate-700 backdrop-blur">
-          {property.propertyType}
-        </span>
+        <HeartButton id={property.id} className="absolute right-3 top-3" />
       </div>
 
       <div className="flex flex-1 flex-col gap-4 p-4">

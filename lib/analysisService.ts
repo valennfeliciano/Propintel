@@ -197,9 +197,9 @@ function buildActionPlan(p: Property, m: AnalysisMetrics, rec: Recommendation, v
       : `Plan for a ${fmtMoney(Math.abs(m.estMonthlyCashFlow))}/mo carry at 20% down — confirm reserves or more money down.`,
   );
   plan.push(
-    p.rentSource === "zillow"
-      ? `Validate the ${fmtMoney(p.estimatedRent)}/mo Zillow rent estimate against live comps before closing.`
-      : `Pull real rent comps — the ${fmtMoney(p.estimatedRent)}/mo rent here is modeled, not a Zestimate.`,
+    p.rentSource === "estimated"
+      ? `Pull real rent comps — the ${fmtMoney(p.estimatedRent)}/mo rent here is modeled.`
+      : `Confirm the ${fmtMoney(p.estimatedRent)}/mo ${p.rentSource === "rentcast" ? "RentCast" : "Zillow"} rent estimate against live comps before closing.`,
   );
   return plan;
 }
@@ -221,7 +221,7 @@ function buildSummary(p: Property, m: AnalysisMetrics, rec: Recommendation): str
   return (
     `This ${p.beds}bd/${p.baths}ba ${p.propertyType.toLowerCase()} in ${p.neighborhood} (${p.zip}) is priced ${valueWord} ` +
     `comps at ${fmtMoney(m.pricePerSqft)}/sqft (ZIP median ${fmtMoney(m.neighborhoodAvgPricePerSqft)}).${zClause} ` +
-    `Projected cap rate ${pct(m.capRatePct)} on ${p.rentSource === "zillow" ? "Zillow-estimated" : "modeled"} rent of ${fmtMoney(p.estimatedRent)}/mo.${cutClause} Verdict: ${rec}.`
+    `Projected cap rate ${pct(m.capRatePct)} on ${p.rentSource === "rentcast" ? "RentCast-estimated" : p.rentSource === "zillow" ? "Zillow-estimated" : "modeled"} rent of ${fmtMoney(p.estimatedRent)}/mo.${cutClause} Verdict: ${rec}.`
   );
 }
 

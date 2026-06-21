@@ -6,6 +6,7 @@ import type { NeighborhoodSummary } from "@/lib/data";
 import type { MarketData } from "@/lib/market";
 import { usdCompact } from "@/lib/format";
 import { useLang, LanguageToggle } from "./LanguageProvider";
+import { useFavorites } from "./FavoritesProvider";
 import PropertyCard from "./PropertyCard";
 import AnalysisPanel from "./AnalysisPanel";
 import MarketSection from "./MarketSection";
@@ -34,7 +35,9 @@ export default function Dashboard({
   market: MarketData;
 }) {
   const { t } = useLang();
+  const { count: favCount, isFavorite } = useFavorites();
   const [activeHood, setActiveHood] = useState<string>("All");
+  const [savedOnly, setSavedOnly] = useState(false);
   const [sort, setSort] = useState<SortKey>("featured");
 
   const [panelProp, setPanelProp] = useState<Property | null>(null);
@@ -90,7 +93,9 @@ export default function Dashboard({
   }, [panelProp, close]);
 
   const filtered = properties
-    .filter((p) => activeHood === "All" || p.neighborhood === activeHood)
+    .filter((p) =>
+      savedOnly ? isFavorite(p.id) : activeHood === "All" || p.neighborhood === activeHood,
+    )
     .sort((a, b) => {
       switch (sort) {
         case "priceAsc":
@@ -162,15 +167,32 @@ export default function Dashboard({
           <div className="flex flex-wrap items-center gap-2">
             <FilterPill
               label={`${t("controls.all")} (${stats.total})`}
-              active={activeHood === "All"}
-              onClick={() => setActiveHood("All")}
+              active={!savedOnly && activeHood === "All"}
+              onClick={() => {
+                setActiveHood("All");
+                setSavedOnly(false);
+              }}
             />
+            <button
+              onClick={() => setSavedOnly(true)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                savedOnly ? "bg-rose-500 text-white" : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8z" />
+              </svg>
+              {t("controls.saved")} ({favCount})
+            </button>
             {neighborhoods.map((n) => (
               <FilterPill
                 key={n.name}
                 label={`${n.name} (${n.count})`}
-                active={activeHood === n.name}
-                onClick={() => setActiveHood(n.name)}
+                active={!savedOnly && activeHood === n.name}
+                onClick={() => {
+                  setActiveHood(n.name);
+                  setSavedOnly(false);
+                }}
               />
             ))}
             <div className="ml-auto flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5">
@@ -195,22 +217,33 @@ export default function Dashboard({
         <p className="mb-4 text-sm text-slate-500">
           {t("controls.showing", {
             n: filtered.length,
-            scope:
-              activeHood === "All"
+            scope: savedOnly
+              ? t("controls.scope.saved")
+              : activeHood === "All"
                 ? t("controls.scope.all")
                 : t("controls.scope.in", { name: activeHood }),
           })}
         </p>
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((p) => (
-            <PropertyCard
-              key={p.id}
-              property={p}
-              onAnalyze={analyze}
-              isActive={panelProp?.id === p.id}
-            />
-          ))}
-        </div>
+        {savedOnly && filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-slate-300" aria-hidden>
+              <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8z" />
+            </svg>
+            <p className="text-sm font-medium text-slate-600">{t("saved.emptyTitle")}</p>
+            <p className="max-w-xs text-xs text-slate-400">{t("saved.emptyBody")}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((p) => (
+              <PropertyCard
+                key={p.id}
+                property={p}
+                onAnalyze={analyze}
+                isActive={panelProp?.id === p.id}
+              />
+            ))}
+          </div>
+        )}
       </main>
 
       <MarketSection market={market} />
