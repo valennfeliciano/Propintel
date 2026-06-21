@@ -4,6 +4,7 @@ import type {
   AnalysisMetrics,
   Recommendation,
 } from "./types";
+import market from "@/data/market.json";
 
 // ---------------------------------------------------------------------------
 // Investment analysis engine (rules v2 — real data)
@@ -21,7 +22,8 @@ const CURRENT_YEAR = 2026;
 const ENGINE_ID = "rules-engine-v2";
 
 const DOWN_PAYMENT_PCT = 0.2;
-const MORTGAGE_RATE = 0.07;
+// Real current 30-yr fixed rate from FRED (MORTGAGE30US) — see data/market.json.
+const MORTGAGE_RATE = market.mortgage30.value / 100;
 const LOAN_TERM_YEARS = 30;
 const OPEX_RATIO = 0.3; // vacancy, maintenance, insurance, management
 

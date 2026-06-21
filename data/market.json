@@ -1,0 +1,44 @@
+{
+  "_source": "Federal Reserve Economic Data (FRED), Federal Reserve Bank of St. Louis",
+  "_note": "Public series, no API key. Re-run scripts/build-market.mjs to refresh.",
+  "mortgage30": {
+    "seriesId": "MORTGAGE30US",
+    "label": "30-yr fixed mortgage rate",
+    "asOf": "2026-06-18",
+    "value": 6.47,
+    "yearAgoDate": "2025-06-18",
+    "yearAgoValue": 6.81,
+    "change": -0.3,
+    "changeUnit": "pts"
+  },
+  "fedFunds": {
+    "seriesId": "FEDFUNDS",
+    "label": "Federal funds rate",
+    "asOf": "2026-05-01",
+    "value": 3.63,
+    "yearAgoDate": "2025-05-01",
+    "yearAgoValue": 4.33,
+    "change": -0.7,
+    "changeUnit": "pts"
+  },
+  "austinHPI": {
+    "seriesId": "ATNHPIUS12420Q",
+    "label": "Austin home price index",
+    "asOf": "2026-01-01",
+    "value": 502.8,
+    "yearAgoDate": "2025-01-01",
+    "yearAgoValue": 506.87,
+    "change": -0.8,
+    "changeUnit": "pct"
+  },
+  "nationalHPI": {
+    "seriesId": "CSUSHPINSA",
+    "label": "U.S. national home price index",
+    "asOf": "2026-03-01",
+    "value": 329.938,
+    "yearAgoDate": "2025-03-01",
+    "yearAgoValue": 327.756,
+    "change": 0.7,
+    "changeUnit": "pct"
+  }
+}
