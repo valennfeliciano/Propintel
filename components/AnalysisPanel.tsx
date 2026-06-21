@@ -3,6 +3,7 @@
 import type { Property, AnalysisResult } from "@/lib/types";
 import { usd, usdCompact, scoreTone, recTone } from "@/lib/format";
 import { useLang } from "./LanguageProvider";
+import PhotoCarousel from "./PhotoCarousel";
 
 function ScoreBar({ label, score }: { label: string; score: number }) {
   const tone = scoreTone(score);
@@ -119,10 +120,12 @@ export default function AnalysisPanel({
         </button>
       </div>
 
-      {loading || !analysis || !m ? (
-        <Skeleton />
-      ) : (
-        <div className="flex-1 space-y-6 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto">
+        <PhotoCarousel photos={property.photos} alt={property.address} />
+        {loading || !analysis || !m ? (
+          <Skeleton />
+        ) : (
+          <div className="space-y-6 p-6">
           {/* Verdict */}
           <div className={`flex items-center justify-between rounded-xl px-4 py-3 ring-1 ${rec!.bg} ${rec!.ring}`}>
             <div className="flex items-center gap-2.5">
@@ -226,6 +229,17 @@ export default function AnalysisPanel({
             </ol>
           </div>
 
+          {/* From the listing (verbatim Zillow copy) */}
+          {property.description && (
+            <div>
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                {t("panel.listingDesc")}
+              </h3>
+              <p className="text-sm leading-relaxed text-slate-600">{property.description}</p>
+              <p className="mt-2 text-[11px] text-slate-400">{t("panel.listingNote")}</p>
+            </div>
+          )}
+
           {/* External links */}
           <div className="flex gap-2">
             <a
@@ -255,8 +269,9 @@ export default function AnalysisPanel({
               {t("panel.disclaimer")}
             </p>
           </div>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
