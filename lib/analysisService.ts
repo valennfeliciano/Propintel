@@ -22,8 +22,9 @@ const CURRENT_YEAR = 2026;
 const ENGINE_ID = "rules-engine-v2";
 
 const DOWN_PAYMENT_PCT = 0.2;
-// Real current 30-yr fixed rate from FRED (MORTGAGE30US) — see data/market.json.
-const MORTGAGE_RATE = market.mortgage30.value / 100;
+// Default 30-yr fixed rate from the committed FRED snapshot. Callers pass the
+// live rate (getMarket) so the math stays current; this is the offline default.
+const DEFAULT_MORTGAGE_RATE_PCT = market.mortgage30.value;
 const LOAN_TERM_YEARS = 30;
 const OPEX_RATIO = 0.3; // vacancy, maintenance, insurance, management
 
@@ -37,13 +38,13 @@ const fmtMoney = (n: number) => {
 const pct = (n: number, digits = 1) => `${n.toFixed(digits)}%`;
 const clamp = (n: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
 
-function monthlyMortgagePayment(principal: number): number {
-  const r = MORTGAGE_RATE / 12;
+function monthlyMortgagePayment(principal: number, ratePct: number): number {
+  const r = ratePct / 100 / 12;
   const n = LOAN_TERM_YEARS * 12;
   return (principal * r) / (1 - Math.pow(1 + r, -n));
 }
 
-function computeMetrics(p: Property): AnalysisMetrics {
+function computeMetrics(p: Property, ratePct: number): AnalysisMetrics {
   const pricePerSqft = p.price / p.sqft;
   const pricePerSqftDeltaPct =
     ((pricePerSqft - p.neighborhoodAvgPricePerSqft) /
@@ -61,7 +62,7 @@ function computeMetrics(p: Property): AnalysisMetrics {
   const rentToPricePct = (p.estimatedRent / p.price) * 100;
 
   const loan = p.price * (1 - DOWN_PAYMENT_PCT);
-  const estMonthlyCashFlow = noi / 12 - monthlyMortgagePayment(loan);
+  const estMonthlyCashFlow = noi / 12 - monthlyMortgagePayment(loan, ratePct);
 
   const discountToZestimatePct =
     p.zestimate && p.zestimate > 0
@@ -229,8 +230,11 @@ function buildSummary(p: Property, m: AnalysisMetrics, rec: Recommendation): str
  * Swap this implementation for a Claude call to upgrade the analysis — the
  * return shape is the contract the rest of the app depends on.
  */
-export function analyzeProperty(property: Property): AnalysisResult {
-  const metrics = computeMetrics(property);
+export function analyzeProperty(
+  property: Property,
+  mortgageRatePct: number = DEFAULT_MORTGAGE_RATE_PCT,
+): AnalysisResult {
+  const metrics = computeMetrics(property, mortgageRatePct);
   const valueAdd = VALUE_ADD.test(property.description) || property.condition === "Needs Work";
 
   const value = scoreValue(property, metrics);

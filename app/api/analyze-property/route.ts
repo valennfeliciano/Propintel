@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getPropertyById } from "@/lib/data";
 import { analyzeProperty } from "@/lib/analysisService";
+import { getMarket } from "@/lib/market";
 
 // POST /api/analyze-property  { propertyId: string }
 // Returns an AnalysisResult for the property.
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const analysis = analyzeProperty(property);
+  const market = await getMarket();
+  const analysis = analyzeProperty(property, market.mortgage30.value);
   return NextResponse.json(analysis);
 }

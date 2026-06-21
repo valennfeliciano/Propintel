@@ -1,6 +1,6 @@
 "use client";
 
-import market from "@/data/market.json";
+import type { MarketData } from "@/lib/market";
 import { useLang } from "./LanguageProvider";
 import RateExplorer from "./RateExplorer";
 
@@ -11,7 +11,7 @@ function fmtDate(iso: string, lang: string) {
   });
 }
 
-export default function MarketSection() {
+export default function MarketSection({ market }: { market: MarketData }) {
   const { t, lang } = useLang();
   const m = market;
 
@@ -63,7 +63,7 @@ export default function MarketSection() {
 
         {/* Interactive: how a rate change moves the math */}
         <div className="mt-8">
-          <RateExplorer />
+          <RateExplorer market={market} />
         </div>
 
         {/* What moves each factor */}

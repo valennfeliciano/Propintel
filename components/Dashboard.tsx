@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Property, AnalysisResult } from "@/lib/types";
 import type { NeighborhoodSummary } from "@/lib/data";
+import type { MarketData } from "@/lib/market";
 import { usdCompact } from "@/lib/format";
 import { useLang, LanguageToggle } from "./LanguageProvider";
 import PropertyCard from "./PropertyCard";
@@ -25,10 +26,12 @@ export default function Dashboard({
   properties,
   neighborhoods,
   stats,
+  market,
 }: {
   properties: Property[];
   neighborhoods: NeighborhoodSummary[];
   stats: DashboardStats;
+  market: MarketData;
 }) {
   const { t } = useLang();
   const [activeHood, setActiveHood] = useState<string>("All");
@@ -210,7 +213,7 @@ export default function Dashboard({
         </div>
       </main>
 
-      <MarketSection />
+      <MarketSection market={market} />
       <MethodologySection />
 
       {/* Slide-over */}

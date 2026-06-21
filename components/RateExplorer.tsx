@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import market from "@/data/market.json";
+import type { MarketData } from "@/lib/market";
 import { useLang } from "./LanguageProvider";
 
 const LOAN = 400_000; // illustrative loan amount
@@ -46,9 +46,9 @@ function Result({
   );
 }
 
-export default function RateExplorer() {
+export default function RateExplorer({ market }: { market: MarketData }) {
   const { t } = useLang();
-  const base = market.mortgage30.value; // real current rate from FRED
+  const base = market.mortgage30.value; // live current rate from FRED
   const [rate, setRate] = useState(base);
 
   const payNow = payment(LOAN, rate);
