@@ -43,9 +43,14 @@ async function rentFor(p) {
   return { rent: Math.round(j.rent), low: Math.round(j.rentRangeLow), high: Math.round(j.rentRangeHigh), comps: (j.comparables || []).length };
 }
 
-const byZpid = {};
+// Incremental: keep already-cached rents and only fetch listings we don't have
+// yet, so re-runs (e.g. after adding listings) spend the minimum API calls.
+let byZpid = {};
+try { byZpid = JSON.parse(readFileSync(join(root, "data", "rentcast.json"), "utf8")).byZpid || {}; } catch { /* first run */ }
+const startCount = Object.keys(byZpid).length;
 const failures = [];
 for (const p of raw) {
+  if (byZpid[p.zpid]) continue; // already cached — skip to save an API call
   try {
     byZpid[p.zpid] = await rentFor(p);
     console.log(`  ${p.zpid} ${p.street}: $${byZpid[p.zpid].rent}/mo (${byZpid[p.zpid].low}-${byZpid[p.zpid].high}, ${byZpid[p.zpid].comps} comps)`);
@@ -62,4 +67,5 @@ const out = {
   byZpid,
 };
 writeFileSync(join(root, "data", "rentcast.json"), JSON.stringify(out, null, 2) + "\n");
-console.log(`\nWrote ${Object.keys(byZpid).length}/${raw.length} rents to data/rentcast.json` + (failures.length ? ` (${failures.length} failed)` : ""));
+const fetched = Object.keys(byZpid).length - startCount;
+console.log(`\nFetched ${fetched} new (had ${startCount}); ${Object.keys(byZpid).length}/${raw.length} cached to data/rentcast.json` + (failures.length ? ` (${failures.length} failed)` : ""));

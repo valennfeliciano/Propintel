@@ -30,18 +30,35 @@ const CURRENT_YEAR = 2026;
 
 // ZIP → human area label (groups listings that share a ZIP).
 const ZIP_AREA = {
+  "78703": "Tarrytown / Clarksville",
   "78704": "South Congress / Barton Hills",
   "78717": "Avery Ranch / NW",
+  "78721": "East Austin / Govalle",
+  "78723": "Windsor Park / Mueller",
+  "78724": "East Austin / Colony Park",
+  "78725": "Southeast / Hornsby Bend",
+  "78726": "Northwest / Canyon Creek",
   "78727": "North Austin / Tech Corridor",
+  "78729": "Northwest / Milwood",
+  "78731": "Northwest Hills",
+  "78734": "Lakeway / Lake Travis",
+  "78735": "Southwest / Barton Creek",
   "78736": "Southwest Hills",
   "78737": "Hill Country / Dripping Springs",
   "78738": "Bee Cave / Lake Travis",
   "78739": "Circle C / SW Austin",
+  "78741": "East Riverside",
   "78744": "Southeast Austin",
+  "78745": "South Austin",
   "78747": "Far South / Onion Creek",
   "78748": "Far South Austin",
+  "78749": "Southwest Austin",
+  "78751": "Hyde Park",
   "78753": "North Austin",
+  "78754": "Northeast / Harris Branch",
+  "78756": "Rosedale / Allandale",
   "78758": "North Austin / Quail Creek",
+  "78759": "Great Hills / Arboretum",
 };
 
 const parseLot = (s) => {

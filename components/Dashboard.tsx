@@ -249,47 +249,42 @@ export default function Dashboard({
       <MarketSection market={market} />
       <MethodologySection />
 
-      {/* Slide-over */}
+      {/* Full-page property view */}
       {panelProp && (
-        <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Property analysis">
-          <div
-            onClick={close}
-            className={`absolute inset-0 bg-slate-900/40 transition-opacity duration-300 ${
-              visible ? "opacity-100" : "opacity-0"
-            }`}
-          />
-          <div
-            className={`absolute right-0 top-0 h-full w-full max-w-md overflow-hidden shadow-2xl transition-transform duration-300 ease-out ${
-              visible ? "translate-x-0" : "translate-x-full"
-            }`}
-          >
-            {error ? (
-              <div className="flex h-full flex-col items-center justify-center gap-4 bg-white p-8 text-center">
-                <p className="text-sm text-rose-600">{error}</p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => analyze(panelProp)}
-                    className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
-                  >
-                    {t("panel.retry")}
-                  </button>
-                  <button
-                    onClick={close}
-                    className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-                  >
-                    {t("panel.close")}
-                  </button>
-                </div>
+        <div
+          className={`fixed inset-0 z-50 bg-white transition-opacity duration-200 ${
+            visible ? "opacity-100" : "opacity-0"
+          }`}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Property analysis"
+        >
+          {error ? (
+            <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
+              <p className="text-sm text-rose-600">{error}</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => analyze(panelProp)}
+                  className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600"
+                >
+                  {t("panel.retry")}
+                </button>
+                <button
+                  onClick={close}
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  {t("panel.close")}
+                </button>
               </div>
-            ) : (
-              <AnalysisPanel
-                property={panelProp}
-                analysis={analysis}
-                loading={loading}
-                onClose={close}
-              />
-            )}
-          </div>
+            </div>
+          ) : (
+            <AnalysisPanel
+              property={panelProp}
+              analysis={analysis}
+              loading={loading}
+              onClose={close}
+            />
+          )}
         </div>
       )}
     </div>
