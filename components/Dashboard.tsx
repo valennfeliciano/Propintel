@@ -103,20 +103,12 @@ export default function Dashboard({
   // while scrolling (especially on mobile) without losing the filters.
   useEffect(() => {
     let lastY = window.scrollY;
-    let ticking = false;
-    const update = () => {
+    const onScroll = () => {
       const y = window.scrollY;
       if (y < 160) setHideControls(false);
-      else if (y > lastY + 6) setHideControls(true);
-      else if (y < lastY - 6) setHideControls(false);
+      else if (y > lastY + 8) setHideControls(true);
+      else if (y < lastY - 8) setHideControls(false);
       lastY = y;
-      ticking = false;
-    };
-    const onScroll = () => {
-      if (!ticking) {
-        ticking = true;
-        requestAnimationFrame(update);
-      }
     };
     const onMove = (e: MouseEvent) => {
       if (e.clientY < 90) setHideControls(false);
@@ -239,7 +231,8 @@ export default function Dashboard({
               </button>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Row 1: scope + view/sort (compact, always one line) */}
+          <div className="flex items-center gap-2">
             <FilterPill
               label={`${t("controls.all")} (${stats.total})`}
               active={!savedOnly && activeHood === "All"}
@@ -250,7 +243,7 @@ export default function Dashboard({
             />
             <button
               onClick={() => setSavedOnly(true)}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                 savedOnly ? "bg-rose-500 text-white" : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
               }`}
             >
@@ -259,17 +252,6 @@ export default function Dashboard({
               </svg>
               {t("controls.saved")} ({favCount})
             </button>
-            {neighborhoods.map((n) => (
-              <FilterPill
-                key={n.name}
-                label={`${n.name} (${n.count})`}
-                active={!savedOnly && activeHood === n.name}
-                onClick={() => {
-                  setActiveHood(n.name);
-                  setSavedOnly(false);
-                }}
-              />
-            ))}
             <div className="ml-auto flex items-center gap-2">
               <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5">
                 {(["grid", "map"] as const).map((v) => (
@@ -285,7 +267,7 @@ export default function Dashboard({
                 ))}
               </div>
               {view === "grid" && (
-                <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5">
+                <div className="hidden items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5 sm:flex">
                   {SORT_KEYS.map((k) => (
                     <button
                       key={k}
@@ -300,6 +282,21 @@ export default function Dashboard({
                 </div>
               )}
             </div>
+          </div>
+          {/* Row 2: neighborhoods in a single horizontal-scroll strip (keeps the
+              bar compact — no more wall of pills covering the listings) */}
+          <div className="mt-2 -mx-5 flex gap-2 overflow-x-auto px-5 pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {neighborhoods.map((n) => (
+              <FilterPill
+                key={n.name}
+                label={`${n.name} (${n.count})`}
+                active={!savedOnly && activeHood === n.name}
+                onClick={() => {
+                  setActiveHood(n.name);
+                  setSavedOnly(false);
+                }}
+              />
+            ))}
           </div>
         </div>
       </div>
@@ -412,7 +409,7 @@ function FilterPill({
   return (
     <button
       onClick={onClick}
-      className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+      className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
         active
           ? "bg-emerald-600 text-white"
           : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
