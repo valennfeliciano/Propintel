@@ -11,6 +11,7 @@ import PropertyCard from "./PropertyCard";
 import AnalysisPanel from "./AnalysisPanel";
 import MarketSection from "./MarketSection";
 import MethodologySection from "./MethodologySection";
+import ListingsMap, { type MapPoint } from "./ListingsMap";
 
 type SortKey = "featured" | "priceAsc" | "priceDesc" | "newest";
 
@@ -28,17 +29,20 @@ export default function Dashboard({
   neighborhoods,
   stats,
   market,
+  mapPoints,
 }: {
   properties: Property[];
   neighborhoods: NeighborhoodSummary[];
   stats: DashboardStats;
   market: MarketData;
+  mapPoints: MapPoint[];
 }) {
   const { t } = useLang();
   const { count: favCount, isFavorite } = useFavorites();
   const [activeHood, setActiveHood] = useState<string>("All");
   const [savedOnly, setSavedOnly] = useState(false);
   const [sort, setSort] = useState<SortKey>("featured");
+  const [view, setView] = useState<"grid" | "map">("grid");
 
   const [panelProp, setPanelProp] = useState<Property | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
@@ -108,6 +112,7 @@ export default function Dashboard({
           return 0;
       }
     });
+  const visibleIds = new Set(filtered.map((p) => p.id));
 
   return (
     <div className="flex flex-col">
@@ -195,18 +200,35 @@ export default function Dashboard({
                 }}
               />
             ))}
-            <div className="ml-auto flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5">
-              {SORT_KEYS.map((k) => (
-                <button
-                  key={k}
-                  onClick={() => setSort(k)}
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                    sort === k ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900"
-                  }`}
-                >
-                  {t(`sort.${k}`)}
-                </button>
-              ))}
+            <div className="ml-auto flex items-center gap-2">
+              <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5">
+                {(["grid", "map"] as const).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setView(v)}
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                      view === v ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900"
+                    }`}
+                  >
+                    {t(`view.${v}`)}
+                  </button>
+                ))}
+              </div>
+              {view === "grid" && (
+                <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5">
+                  {SORT_KEYS.map((k) => (
+                    <button
+                      key={k}
+                      onClick={() => setSort(k)}
+                      className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                        sort === k ? "bg-slate-900 text-white" : "text-slate-500 hover:text-slate-900"
+                      }`}
+                    >
+                      {t(`sort.${k}`)}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -224,7 +246,15 @@ export default function Dashboard({
                 : t("controls.scope.in", { name: activeHood }),
           })}
         </p>
-        {savedOnly && filtered.length === 0 ? (
+        {view === "map" ? (
+          <ListingsMap
+            points={mapPoints.filter((mp) => visibleIds.has(mp.id))}
+            onSelect={(id) => {
+              const p = properties.find((x) => x.id === id);
+              if (p) analyze(p);
+            }}
+          />
+        ) : savedOnly && filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-slate-300" aria-hidden>
               <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8z" />
