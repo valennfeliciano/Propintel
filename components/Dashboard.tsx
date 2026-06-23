@@ -43,6 +43,8 @@ export default function Dashboard({
   const [savedOnly, setSavedOnly] = useState(false);
   const [sort, setSort] = useState<SortKey>("featured");
   const [view, setView] = useState<"grid" | "map">("grid");
+  const [search, setSearch] = useState("");
+  const [hideControls, setHideControls] = useState(false);
 
   const [panelProp, setPanelProp] = useState<Property | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
@@ -96,10 +98,46 @@ export default function Dashboard({
     return () => window.removeEventListener("keydown", onKey);
   }, [panelProp, close]);
 
+  // Auto-hide the (tall) filter bar on scroll-down; reveal on scroll-up, near
+  // the top, or when the mouse approaches the top edge. Keeps listings visible
+  // while scrolling (especially on mobile) without losing the filters.
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let ticking = false;
+    const update = () => {
+      const y = window.scrollY;
+      if (y < 160) setHideControls(false);
+      else if (y > lastY + 6) setHideControls(true);
+      else if (y < lastY - 6) setHideControls(false);
+      lastY = y;
+      ticking = false;
+    };
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(update);
+      }
+    };
+    const onMove = (e: MouseEvent) => {
+      if (e.clientY < 90) setHideControls(false);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("mousemove", onMove, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("mousemove", onMove);
+    };
+  }, []);
+
+  const q = search.trim().toLowerCase();
+  const matchesSearch = (p: Property) =>
+    `${p.address} ${p.neighborhood} ${p.city} ${p.state} ${p.zip}`.toLowerCase().includes(q);
   const filtered = properties
-    .filter((p) =>
-      savedOnly ? isFavorite(p.id) : activeHood === "All" || p.neighborhood === activeHood,
-    )
+    .filter((p) => {
+      if (savedOnly) return isFavorite(p.id) && (!q || matchesSearch(p));
+      if (q) return matchesSearch(p);
+      return activeHood === "All" || p.neighborhood === activeHood;
+    })
     .sort((a, b) => {
       switch (sort) {
         case "priceAsc":
@@ -167,8 +205,40 @@ export default function Dashboard({
       </header>
 
       {/* Controls */}
-      <div className="sticky top-0 z-20 border-b border-slate-200 bg-background/85 backdrop-blur">
+      <div
+        className={`sticky top-0 z-20 border-b border-slate-200 bg-background/85 backdrop-blur transition-transform duration-300 ease-out ${
+          hideControls ? "-translate-y-full" : "translate-y-0"
+        }`}
+      >
         <div className="mx-auto w-full max-w-6xl px-5 py-3">
+          <div className="mb-3 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-100">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="flex-none text-slate-400" aria-hidden>
+              <circle cx="11" cy="11" r="7" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setSavedOnly(false);
+              }}
+              placeholder={t("search.placeholder")}
+              aria-label={t("search.placeholder")}
+              className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                aria-label={t("search.clear")}
+                className="flex-none rounded p-1 text-slate-400 transition-colors hover:text-slate-700"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <FilterPill
               label={`${t("controls.all")} (${stats.total})`}
@@ -239,11 +309,13 @@ export default function Dashboard({
         <p className="mb-4 text-sm text-slate-500">
           {t("controls.showing", {
             n: filtered.length,
-            scope: savedOnly
-              ? t("controls.scope.saved")
-              : activeHood === "All"
-                ? t("controls.scope.all")
-                : t("controls.scope.in", { name: activeHood }),
+            scope: q
+              ? t("controls.scope.search", { q: search.trim() })
+              : savedOnly
+                ? t("controls.scope.saved")
+                : activeHood === "All"
+                  ? t("controls.scope.all")
+                  : t("controls.scope.in", { name: activeHood }),
           })}
         </p>
         {view === "map" ? (
@@ -254,13 +326,20 @@ export default function Dashboard({
               if (p) analyze(p);
             }}
           />
-        ) : savedOnly && filtered.length === 0 ? (
+        ) : (savedOnly || q) && filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-slate-300 bg-white py-16 text-center">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-slate-300" aria-hidden>
-              <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8z" />
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="text-slate-300" aria-hidden>
+              {q ? (
+                <>
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m21 21-4.3-4.3" />
+                </>
+              ) : (
+                <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8z" />
+              )}
             </svg>
-            <p className="text-sm font-medium text-slate-600">{t("saved.emptyTitle")}</p>
-            <p className="max-w-xs text-xs text-slate-400">{t("saved.emptyBody")}</p>
+            <p className="text-sm font-medium text-slate-600">{q ? t("search.emptyTitle") : t("saved.emptyTitle")}</p>
+            <p className="max-w-xs text-xs text-slate-400">{q ? t("search.emptyBody") : t("saved.emptyBody")}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">

@@ -1,36 +1,186 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PropIntel — Real Estate Investment Intelligence
 
-## Getting Started
+**Find the undervalued deal before everyone else.** PropIntel scores real for-sale
+listings on investment merit — value vs. comparable sales, cap rate, hidden
+risks, and a concrete action plan — so an investor can screen a hundred
+properties to buy one. Everything is built on **real, verifiable data**, not
+placeholders.
 
-First, run the development server:
+> Demo dataset: **50 real Austin, TX single-family listings** scraped live from
+> Zillow, each with real photos, prices, descriptions, and price history.
+
+---
+
+## Why it stands out
+
+Most "AI real estate" demos run on mock data. PropIntel's whole thesis is the
+opposite: every number traces to a real source, and the app says exactly where
+each one comes from.
+
+- **Real listings** — 50 live Zillow listings (address, price, beds/baths/sqft,
+  year built, tax, HOA, **price-cut history**, 12 photos each, verbatim seller
+  description). QA'd field-by-field against the live listings.
+- **Real comps** — value scoring uses the **median $/sqft per ZIP**, aggregated
+  from 203 listings across 41 Austin ZIP codes.
+- **Real macro data** — the financing math is anchored to **live FRED data**
+  (the Federal Reserve's public economic database): the current 30-year mortgage
+  rate, the Fed funds rate, and the Austin vs. national home-price indices. It
+  auto-refreshes daily.
+- **Real rent** — per-property rent estimates from **RentCast** plus the
+  **Zillow ZORI** observed area rent, both feeding the cap-rate calculation.
+- **Honest about modeling** — anywhere a figure is modeled rather than measured
+  (e.g. rent without a RentCast estimate), the UI labels it as such.
+
+---
+
+## Features
+
+- **Investment scoring engine** — every listing gets a Value score, an
+  Opportunity score, a blended verdict (Strong Buy / Worth a Look / Pass),
+  highlights, risk factors, and a numbered action plan.
+- **Full underwriting** — price/sqft vs. comps, cap rate, gross rent multiplier,
+  rent-to-price, estimated monthly cash flow, and age, all computed transparently.
+- **Location search** — search the listings by address, neighborhood, or ZIP.
+- **Grid & map views**, sort (featured / price / newest), and per-neighborhood
+  filters.
+- **Save favorites** — heart any listing into a shortlist (stored in the browser).
+- **Full-page property view** — Zillow-style page with a photo carousel, facts,
+  full analysis, RentCast + ZORI rent, a location map, the verbatim listing
+  description, and a contact CTA.
+- **Market & education section** — explains how the economy moves housing, with
+  an **interactive rate explorer** (drag the mortgage rate and watch the payment
+  and a buyer's purchasing power recompute via the real amortization formula).
+- **"How scoring works"** — a no-black-box breakdown of the methodology and the
+  stated assumptions.
+- **Bilingual** — full English / Spanish toggle.
+
+---
+
+## How the analysis works
+
+`lib/analysisService.ts` is an explainable rules engine. It is also the single
+**swap point for AI**: replace the body of `analyzeProperty()` with an LLM call
+that returns the same `AnalysisResult` shape and nothing else changes.
+
+**Value score** — how cheap the listing is relative to evidence: its $/sqft vs.
+the ZIP's median comp, its gap to Zillow's Zestimate (when present), and a nudge
+from the cap rate.
+
+**Opportunity score** — forward upside from real signals: the count and size of
+**price cuts**, days on market, value-add language parsed from the description
+(investor / renovation / as-is), and how far below comps it already sits.
+
+**Cap rate & cash flow** — net operating income ÷ price. Income is the RentCast
+estimate (or Zillow rent, or a transparent model). Expenses are the real
+property tax, real HOA, and a 30% load for vacancy / maintenance / insurance /
+management. Cash flow then subtracts the mortgage at the **live FRED rate**.
+
+**Verdict** — `overall = 55% value + 45% opportunity`. 70+ is a Strong Buy
+(unless five or more risk flags drop it a notch), 50–69 is Worth a Look, below
+50 is a Pass. Passing on a weak deal is the point.
+
+**Stated assumptions** — 20% down · mortgage rate live from FRED · 30-year term ·
+30% operating expenses.
+
+---
+
+## Tech stack
+
+- **Next.js 16** (App Router, Turbopack) + **TypeScript**
+- **Tailwind CSS v4**
+- **ISR** for the live FRED data (revalidates daily)
+- Deploys to **Vercel** with zero config
+- No paid API keys required to run the demo (scraped data + RentCast/ZORI are
+  cached into the repo; FRED is a free public feed)
+
+---
+
+## Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build   # production build
+npm start       # serve the production build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## Data pipeline
 
-To learn more about Next.js, take a look at the following resources:
+All datasets live in `data/` and are regenerated by scripts in `scripts/`:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| File | What it is | Built by |
+|---|---|---|
+| `data/zillow-raw.json` | Raw scraped listings (50) | browser scrape |
+| `data/photos.json` | 12 photos per listing | browser scrape |
+| `data/descriptions.json` | Verbatim listing descriptions | browser scrape |
+| `data/comps.json` | Median $/sqft per ZIP (41 ZIPs) | browser scrape |
+| `data/market.json` | FRED macro snapshot (fallback for the live feed) | `build-market.mjs` |
+| `data/rents.json` | Zillow ZORI area rent by ZIP | data import |
+| `data/rentcast.json` | RentCast per-property rent estimates | data import |
+| `data/properties.json` | **Final app dataset** (derived from all of the above) | `build-properties.mjs` |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+node scripts/build-market.mjs        # refresh the FRED snapshot
+node scripts/build-properties.mjs    # rebuild the app dataset
+```
 
-## Deploy on Vercel
+`build-properties.mjs` derives each property's neighborhood (ZIP → area name),
+condition (parsed from the description language), and rent source, then merges
+real comps, ZORI area rent, and RentCast estimates.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### How the scrape works
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Zillow blocks server-side / datacenter requests (HTTP 403). The data here was
+collected by driving a real, logged-in browser session and parsing the
+`__NEXT_DATA__` JSON embedded in each listing page — the same data Zillow's own
+front end renders. Structured fields were then QA'd against the live listings.
+The results are cached into the repo so the app runs fast and offline.
+
+---
+
+## Project structure
+
+```
+app/
+  page.tsx                  # server component: loads data + live FRED, renders the dashboard
+  api/analyze-property/     # POST endpoint -> AnalysisResult (uses the live rate)
+components/
+  Dashboard.tsx             # grid/map, search, filters, sort, favorites
+  PropertyCard.tsx          # listing card
+  AnalysisPanel.tsx         # full-page property view
+  MarketSection.tsx         # education + live FRED figures
+  RateExplorer.tsx          # interactive amortization calculator
+  MethodologySection.tsx    # "how scoring works"
+  LanguageProvider.tsx      # EN/ES i18n
+  FavoritesProvider.tsx     # saved shortlist
+  ListingsMap.tsx / PropertyMap.tsx
+lib/
+  analysisService.ts        # the scoring engine (AI swap point)
+  market.ts                 # live FRED fetch (daily ISR) + fallback
+  data.ts                   # data accessors
+  types.ts                  # Property + AnalysisResult contracts
+  i18n.ts                   # English / Spanish dictionaries
+data/                       # all real datasets (see pipeline above)
+scripts/                    # data build scripts
+```
+
+---
+
+## Disclaimer
+
+PropIntel is an educational tool. Its analysis is **not financial advice**.
+Listing data is real but point-in-time (captured at scrape time); always verify
+every figure independently before transacting. Listing photos and descriptions
+are © their respective owners and are shown for demonstration only.
+
+---
+
+*Data sources: Zillow (listings, photos, Zestimate, ZORI), RentCast (rent
+estimates), Federal Reserve Economic Data / FRED (rates and home-price indices).*
