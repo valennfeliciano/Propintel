@@ -5,25 +5,30 @@ import type {
   Recommendation,
 } from "./types";
 import market from "@/data/market.json";
+import Anthropic from "@anthropic-ai/sdk";
 
 // ---------------------------------------------------------------------------
-// Investment analysis engine (rules v2 — real data)
+// Investment analysis engine — Claude AI + rules-engine fallback
 //
-// Reasons over REAL scraped signals: price-per-sqft vs. the ZIP's median comp,
-// price vs. Zillow Zestimate, price-cut history, days on market, and value-add
-// language parsed from the actual listing description.
+// Primary path: analyzeProperty() calls Claude (claude-opus-4-6) with all
+// property and market signals. Claude returns a structured AnalysisResult
+// JSON object, which is validated against the contract before returning.
 //
-// This is the abstraction boundary for AI: replace the body of
-// `analyzeProperty` with a Claude `generateObject` call returning the same
-// `AnalysisResult` shape — no API route or UI changes required.
+// Fallback path: If ANTHROPIC_API_KEY is absent, Claude is unavailable, or
+// the response fails schema validation, the function transparently falls back
+// to the deterministic rules engine (rules-engine-v2). No API route or UI
+// changes are required — the contract is identical either way.
+//
+// This is the abstraction boundary noted in the original source: swap the
+// body of `analyzeProperty` for a Claude call, keep the AnalysisResult shape.
 // ---------------------------------------------------------------------------
 
 const CURRENT_YEAR = 2026;
 const ENGINE_ID = "rules-engine-v2";
+// Exact model string — do not add date suffixes.
+const CLAUDE_MODEL = "claude-opus-4-6";
 
 const DOWN_PAYMENT_PCT = 0.2;
-// Default 30-yr fixed rate from the committed FRED snapshot. Callers pass the
-// live rate (getMarket) so the math stays current; this is the offline default.
 const DEFAULT_MORTGAGE_RATE_PCT = market.mortgage30.value;
 const LOAN_TERM_YEARS = 30;
 const OPEX_RATIO = 0.3; // vacancy, maintenance, insurance, management
@@ -43,6 +48,11 @@ function monthlyMortgagePayment(principal: number, ratePct: number): number {
   const n = LOAN_TERM_YEARS * 12;
   return (principal * r) / (1 - Math.pow(1 + r, -n));
 }
+
+// ---------------------------------------------------------------------------
+// Shared metrics computation — used by both the Claude path (for the prompt
+// context) and the rules-engine fallback.
+// ---------------------------------------------------------------------------
 
 function computeMetrics(p: Property, ratePct: number): AnalysisMetrics {
   const pricePerSqft = p.price / p.sqft;
@@ -86,7 +96,10 @@ function computeMetrics(p: Property, ratePct: number): AnalysisMetrics {
   };
 }
 
-// Value: priced below comps + below Zestimate + supporting income.
+// ---------------------------------------------------------------------------
+// Rules engine — kept intact as the fallback. No changes from v2.
+// ---------------------------------------------------------------------------
+
 function scoreValue(p: Property, m: AnalysisMetrics): number {
   let s = 50 - m.pricePerSqftDeltaPct * 2.0;
   if (m.discountToZestimatePct != null) s -= m.discountToZestimatePct * 1.4;
@@ -97,15 +110,14 @@ function scoreValue(p: Property, m: AnalysisMetrics): number {
   return Math.round(clamp(s));
 }
 
-// Opportunity: forward upside from REAL motivation/leverage signals.
 function scoreOpportunity(p: Property, m: AnalysisMetrics, valueAdd: boolean): number {
   let s = 22;
-  s += Math.min(p.priceCutCount * 6, 18); // each cut = more motivated seller
+  s += Math.min(p.priceCutCount * 6, 18);
   if (p.lastCutPct != null) s += Math.min(Math.abs(p.lastCutPct), 12);
   if (p.daysOnMarket > 90) s += 14;
   else if (p.daysOnMarket > 45) s += 8;
   else if (p.daysOnMarket > 21) s += 4;
-  if (valueAdd) s += 12; // forced-equity potential
+  if (valueAdd) s += 12;
   if (m.pricePerSqftDeltaPct < -8) s += 8;
   if (m.discountToZestimatePct != null && m.discountToZestimatePct < -3) s += 8;
   return Math.round(clamp(s));
@@ -226,13 +238,12 @@ function buildSummary(p: Property, m: AnalysisMetrics, rec: Recommendation): str
 }
 
 /**
- * Analyze a real listing for investment potential.
- * Swap this implementation for a Claude call to upgrade the analysis — the
- * return shape is the contract the rest of the app depends on.
+ * Pure rules-engine path — guaranteed to return a valid AnalysisResult with
+ * no network I/O. Called directly when Claude is unavailable.
  */
-export function analyzeProperty(
+function analyzeWithRulesEngine(
   property: Property,
-  mortgageRatePct: number = DEFAULT_MORTGAGE_RATE_PCT,
+  mortgageRatePct: number,
 ): AnalysisResult {
   const metrics = computeMetrics(property, mortgageRatePct);
   const valueAdd = VALUE_ADD.test(property.description) || property.condition === "Needs Work";
@@ -260,4 +271,307 @@ export function analyzeProperty(
     metrics,
     generatedBy: ENGINE_ID,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Claude integration
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds the prompt sent to Claude. Strategy:
+ *
+ * 1. System prompt establishes Claude as an expert real-estate investment
+ *    analyst who must ONLY return valid JSON — no prose, no markdown fences.
+ *    This is critical because the response is parsed directly.
+ *
+ * 2. User message provides all numeric signals pre-computed (metrics) so
+ *    Claude doesn't need to do arithmetic — it focuses on interpreting signals,
+ *    surfacing nuanced risk/upside language, and explaining the "why" behind
+ *    the verdict. This also keeps token usage predictable.
+ *
+ * 3. Scores and recommendation thresholds are spelled out in the prompt so
+ *    Claude's output is calibrated to the same 0-100 scale and verdict labels
+ *    the UI already understands:
+ *      Strong Buy  ≥ 70 (and fewer than 5 risk factors)
+ *      Worth a Look  50–69
+ *      Pass          < 50
+ *
+ * 4. Output schema is inlined in the system prompt so Claude knows exactly
+ *    which fields to produce and in what format. No guessing.
+ *
+ * Token budget: ~800 input tokens per request (property data + system prompt).
+ * Output is typically 400–600 tokens. Total cost per analysis ≈ $0.017 at
+ * Opus 4.6 rates ($5/M in, $25/M out).
+ */
+function buildClaudePrompt(
+  p: Property,
+  m: AnalysisMetrics,
+  mortgageRatePct: number,
+): { system: string; userMessage: string } {
+  const valueAdd = VALUE_ADD.test(p.description) || p.condition === "Needs Work";
+
+  const system = `You are an expert real-estate investment analyst specializing in residential income properties. \
+Your job is to analyze a property listing and return a structured investment analysis.
+
+SCORING RULES (strictly follow these):
+- scoreValue (0-100): How undervalued the property is vs. neighborhood comps and Zestimate. \
+  Higher = more undervalued. Start at 50 (fair value), adjust based on price signals.
+- scoreOpportunity (0-100): Forward upside potential from motivated-seller signals, value-add potential, \
+  days on market, price cuts. Higher = more opportunity.
+- overallScore (0-100): Weighted blend — 55% scoreValue + 45% scoreOpportunity. Round to nearest integer.
+- recommendation: MUST be exactly one of: "Strong Buy", "Worth a Look", "Pass"
+  - "Strong Buy": overallScore >= 70 AND fewer than 5 risk factors
+  - "Worth a Look": overallScore 50-69, OR overallScore >= 70 with 5+ risk factors
+  - "Pass": overallScore < 50
+
+OUTPUT FORMAT: Return ONLY a valid JSON object — no markdown, no code fences, no prose before or after. \
+The object must have exactly these fields:
+{
+  "propertyId": string,
+  "scoreValue": integer 0-100,
+  "scoreOpportunity": integer 0-100,
+  "overallScore": integer 0-100,
+  "recommendation": "Strong Buy" | "Worth a Look" | "Pass",
+  "highlights": string[] (2-5 items, concrete investment positives with specific numbers),
+  "riskFactors": string[] (0-6 items, concrete risks with specific numbers),
+  "actionPlan": string[] (3-5 actionable steps with specific dollar amounts or percentages),
+  "summary": string (2-3 sentences, objective snapshot: price vs comps, cap rate, verdict),
+  "metrics": {
+    "pricePerSqft": integer,
+    "neighborhoodAvgPricePerSqft": integer,
+    "pricePerSqftDeltaPct": number (1 decimal),
+    "grossRentMultiplier": number (1 decimal),
+    "capRatePct": number (1 decimal),
+    "rentToPricePct": number (2 decimals),
+    "meetsOnePercentRule": boolean,
+    "ageYears": integer | null,
+    "estMonthlyCashFlow": integer,
+    "discountToZestimatePct": number | null (1 decimal, negative = below Zestimate)
+  },
+  "generatedBy": "${CLAUDE_MODEL}"
+}`;
+
+  const userMessage = `Analyze this investment property and return the JSON analysis object.
+
+PROPERTY:
+- ID: ${p.id}
+- Address: ${p.address}, ${p.city}, ${p.state} ${p.zip}
+- Neighborhood: ${p.neighborhood}
+- Type: ${p.propertyType} | ${p.beds}bd/${p.baths}ba | ${p.sqft.toLocaleString()} sqft | Lot: ${p.lotSqft.toLocaleString()} sqft
+- Built: ${p.yearBuilt} (${m.ageYears ?? "unknown"} years old) | Condition: ${p.condition}
+- Ask price: $${p.price.toLocaleString()}
+- Zestimate: ${p.zestimate ? `$${p.zestimate.toLocaleString()}` : "N/A"}
+- Days on market: ${p.daysOnMarket}
+- Price cuts: ${p.priceCutCount}${p.lastCutPct != null ? ` (latest: ${p.lastCutPct.toFixed(1)}%)` : ""}
+- HOA: $${p.hoaMonthly}/mo | Property tax: $${p.propertyTaxAnnual.toLocaleString()}/yr
+- Value-add signals: ${valueAdd ? "YES" : "None detected"}
+- Description excerpt: "${p.description.slice(0, 400)}${p.description.length > 400 ? "..." : ""}"
+
+RENTAL INCOME:
+- Estimated rent: $${p.estimatedRent.toLocaleString()}/mo (source: ${p.rentSource})${p.rentLow != null && p.rentHigh != null ? ` | RentCast range: $${p.rentLow.toLocaleString()}–$${p.rentHigh.toLocaleString()}/mo` : ""}
+- Area rent (ZIP ZORI): ${p.areaRent ? `$${p.areaRent.toLocaleString()}/mo as of ${p.areaRentAsOf}` : "N/A"}
+
+NEIGHBORHOOD COMPS:
+- Neighborhood avg $/sqft: $${p.neighborhoodAvgPricePerSqft.toLocaleString()}
+- Neighborhood median price: $${p.neighborhoodMedianPrice.toLocaleString()}
+
+PRE-COMPUTED METRICS (use these exact numbers — do not recompute):
+- pricePerSqft: $${m.pricePerSqft} (${m.pricePerSqftDeltaPct > 0 ? "+" : ""}${m.pricePerSqftDeltaPct}% vs neighborhood avg)
+- grossRentMultiplier: ${m.grossRentMultiplier}
+- capRatePct: ${m.capRatePct}%
+- rentToPricePct: ${m.rentToPricePct}% (meetsOnePercentRule: ${m.meetsOnePercentRule})
+- estMonthlyCashFlow: $${m.estMonthlyCashFlow} (20% down, ${mortgageRatePct}% rate, 30yr, 30% OPEX)
+- discountToZestimatePct: ${m.discountToZestimatePct != null ? `${m.discountToZestimatePct}%` : "N/A"}
+
+MARKET CONTEXT:
+- 30-yr fixed mortgage rate: ${mortgageRatePct}%
+
+Return ONLY the JSON object.`;
+
+  return { system, userMessage };
+}
+
+/**
+ * Validates that a Claude response object conforms to the AnalysisResult
+ * contract. Returns the typed result or null if validation fails.
+ *
+ * We check every required field explicitly so a partial or hallucinated
+ * response doesn't silently produce bad UI data.
+ */
+function validateClaudeResponse(
+  raw: unknown,
+  expectedPropertyId: string,
+): AnalysisResult | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+
+  // Required top-level string fields
+  if (r.propertyId !== expectedPropertyId) return null;
+  if (
+    r.recommendation !== "Strong Buy" &&
+    r.recommendation !== "Worth a Look" &&
+    r.recommendation !== "Pass"
+  )
+    return null;
+  if (typeof r.summary !== "string" || r.summary.length === 0) return null;
+  if (typeof r.generatedBy !== "string") return null;
+
+  // Required numeric scores
+  if (
+    typeof r.scoreValue !== "number" ||
+    typeof r.scoreOpportunity !== "number" ||
+    typeof r.overallScore !== "number"
+  )
+    return null;
+  if (
+    r.scoreValue < 0 || r.scoreValue > 100 ||
+    r.scoreOpportunity < 0 || r.scoreOpportunity > 100 ||
+    r.overallScore < 0 || r.overallScore > 100
+  )
+    return null;
+
+  // Arrays
+  if (!Array.isArray(r.highlights) || r.highlights.length === 0) return null;
+  if (!Array.isArray(r.riskFactors)) return null;
+  if (!Array.isArray(r.actionPlan) || r.actionPlan.length === 0) return null;
+
+  // Metrics sub-object
+  if (!r.metrics || typeof r.metrics !== "object") return null;
+  const mt = r.metrics as Record<string, unknown>;
+  if (
+    typeof mt.pricePerSqft !== "number" ||
+    typeof mt.neighborhoodAvgPricePerSqft !== "number" ||
+    typeof mt.pricePerSqftDeltaPct !== "number" ||
+    typeof mt.grossRentMultiplier !== "number" ||
+    typeof mt.capRatePct !== "number" ||
+    typeof mt.rentToPricePct !== "number" ||
+    typeof mt.meetsOnePercentRule !== "boolean" ||
+    typeof mt.estMonthlyCashFlow !== "number"
+  )
+    return null;
+  if (mt.ageYears !== null && typeof mt.ageYears !== "number") return null;
+  if (
+    mt.discountToZestimatePct !== null &&
+    typeof mt.discountToZestimatePct !== "number"
+  )
+    return null;
+
+  // Verify recommendation is consistent with overallScore
+  const score = r.overallScore as number;
+  const riskCount = (r.riskFactors as unknown[]).length;
+  const expectedRec = recommend(score, riskCount);
+  if (r.recommendation !== expectedRec) {
+    // Claude may have reasoned differently — trust the score and correct it.
+    r.recommendation = expectedRec;
+  }
+
+  return raw as AnalysisResult;
+}
+
+/**
+ * Calls Claude to analyze the property. Returns a validated AnalysisResult
+ * or throws if the API call or response validation fails.
+ */
+async function analyzeWithClaude(
+  property: Property,
+  mortgageRatePct: number,
+  metrics: AnalysisMetrics,
+): Promise<AnalysisResult> {
+  const client = new Anthropic({
+    // ANTHROPIC_API_KEY is read from the environment automatically.
+    // Never hardcode the key here.
+  });
+
+  const { system, userMessage } = buildClaudePrompt(property, metrics, mortgageRatePct);
+
+  // Streaming with finalMessage() — prevents HTTP timeouts on large outputs
+  // and allows us to process the complete response as a single object.
+  // We use adaptive thinking so Claude can reason carefully about nuanced
+  // investment signals without a fixed token budget.
+  const stream = client.messages.stream({
+    model: CLAUDE_MODEL,
+    max_tokens: 4096,
+    thinking: { type: "adaptive" },
+    system,
+    messages: [{ role: "user", content: userMessage }],
+  });
+
+  const message = await stream.finalMessage();
+
+  // Extract the text block — Claude should return exactly one text block
+  // containing the JSON object (thinking blocks are separate).
+  const textBlock = message.content.find((b) => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") {
+    throw new Error("Claude response contained no text block");
+  }
+
+  // Strip any accidental markdown fences Claude might add despite instructions.
+  const raw = textBlock.text
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```\s*$/, "")
+    .trim();
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    throw new Error(`Claude returned non-JSON text: ${(err as Error).message}`);
+  }
+
+  const validated = validateClaudeResponse(parsed, property.id);
+  if (!validated) {
+    throw new Error("Claude response failed schema validation");
+  }
+
+  return validated;
+}
+
+// ---------------------------------------------------------------------------
+// Public API — identical signature to the original. No callers change.
+// ---------------------------------------------------------------------------
+
+/**
+ * Analyze a real listing for investment potential.
+ *
+ * Primary path: Claude (claude-opus-4-6) with adaptive thinking.
+ * Fallback: deterministic rules engine (rules-engine-v2) if:
+ *   - ANTHROPIC_API_KEY is not set
+ *   - Claude API call fails (network, rate limit, server error)
+ *   - Claude response fails schema validation
+ *
+ * The AnalysisResult.generatedBy field tells callers which path was used:
+ *   "claude-opus-4-6"  → Claude AI analysis
+ *   "rules-engine-v2"  → fallback rules engine
+ */
+export async function analyzeProperty(
+  property: Property,
+  mortgageRatePct: number = DEFAULT_MORTGAGE_RATE_PCT,
+): Promise<AnalysisResult> {
+  // Skip Claude entirely if no API key — fail fast, no wasted latency.
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.warn(
+      "[analyzeProperty] ANTHROPIC_API_KEY not set — using rules engine fallback.",
+    );
+    return analyzeWithRulesEngine(property, mortgageRatePct);
+  }
+
+  // Pre-compute metrics once. Both Claude (for prompt context) and the
+  // fallback use the same numbers — guarantees consistency.
+  const metrics = computeMetrics(property, mortgageRatePct);
+
+  try {
+    const result = await analyzeWithClaude(property, mortgageRatePct, metrics);
+    return result;
+  } catch (err) {
+    // Structured error logging so production logs are debuggable.
+    const message = err instanceof Error ? err.message : String(err);
+    const isRateLimit = err instanceof Anthropic.RateLimitError;
+    const isAuth = err instanceof Anthropic.AuthenticationError;
+
+    console.error(
+      `[analyzeProperty] Claude failed (${isRateLimit ? "rate-limited" : isAuth ? "auth error" : "error"}): ${message}. Falling back to rules engine.`,
+    );
+
+    return analyzeWithRulesEngine(property, mortgageRatePct);
+  }
 }

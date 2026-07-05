@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import type { Property } from "@/lib/types";
 import { usdCompact, num } from "@/lib/format";
 import { useLang } from "./LanguageProvider";
@@ -19,10 +20,13 @@ export default function PropertyCard({
   property,
   onAnalyze,
   isActive,
+  priority = false,
 }: {
   property: Property;
   onAnalyze: (p: Property) => void;
   isActive: boolean;
+  /** Pass true for the first 3 above-fold cards to avoid lazy-loading the LCP image. */
+  priority?: boolean;
 }) {
   const { t } = useLang();
   const ppsf = property.price / property.sqft;
@@ -43,9 +47,11 @@ export default function PropertyCard({
           src={property.imageUrl}
           alt={property.address}
           fill
-          sizes="(max-width: 768px) 100vw, 360px"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 360px"
           className="object-cover transition-transform duration-300 group-hover:scale-105"
           unoptimized
+          priority={priority}
+          loading={priority ? "eager" : "lazy"}
         />
         <div className="absolute left-3 top-3 flex gap-2">
           <span className="rounded-full bg-slate-900/80 px-2.5 py-1 text-xs font-medium text-white backdrop-blur">
@@ -85,15 +91,27 @@ export default function PropertyCard({
           <Stat label={t("card.built")} value={property.yearBuilt ? String(property.yearBuilt) : "—"} />
         </div>
 
-        <button
-          onClick={() => onAnalyze(property)}
-          className="mt-auto inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-300"
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <path d="M5 3v4M3 5h4M6 17v4M4 19h4M13 3l2.5 6.5L22 12l-6.5 2.5L13 21l-2.5-6.5L4 12l6.5-2.5L13 3z" />
-          </svg>
-          {t("card.analyze")}
-        </button>
+        <div className="mt-auto flex gap-2">
+          <button
+            onClick={() => onAnalyze(property)}
+            className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M5 3v4M3 5h4M6 17v4M4 19h4M13 3l2.5 6.5L22 12l-6.5 2.5L13 21l-2.5-6.5L4 12l6.5-2.5L13 3z" />
+            </svg>
+            {t("card.analyze")}
+          </button>
+          <Link
+            href={`/property/${property.id}`}
+            className="inline-flex items-center justify-center rounded-xl border border-slate-200 px-3 py-2.5 text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+            title="View shareable full page"
+            aria-label="View full property page"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6m0 0v6m0-6L10 14" />
+            </svg>
+          </Link>
+        </div>
       </div>
     </article>
   );

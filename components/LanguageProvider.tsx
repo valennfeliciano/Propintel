@@ -7,17 +7,25 @@ interface LangCtx {
   lang: Lang;
   setLang: (l: Lang) => void;
   t: (key: string, vars?: Record<string, string | number>) => string;
+  ready: boolean;
 }
 
 const Ctx = createContext<LangCtx | null>(null);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>("en");
+  const [ready, setReady] = useState(false);
 
-  // Restore saved preference on mount (avoids hydration mismatch by reading post-mount).
+  // Read localStorage after mount so the server render stays hydration-safe
+  // (server never touches localStorage). Mark `ready` once the true preference
+  // is applied so consumers can gate rendering until the correct language is known.
   useEffect(() => {
     const saved = localStorage.getItem("propintel.lang");
-    if (saved === "en" || saved === "es") setLangState(saved);
+    if (saved === "en" || saved === "es") {
+      setLangState(saved);
+      document.documentElement.lang = saved;
+    }
+    setReady(true);
   }, []);
 
   const setLang = useCallback((l: Lang) => {
@@ -31,7 +39,16 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     [lang],
   );
 
-  return <Ctx.Provider value={{ lang, setLang, t }}>{children}</Ctx.Provider>;
+  // `opacity: 0` instead of `visibility: hidden` during the single-frame
+  // hydration window. Both reserve layout space (no CLS), but opacity:0 is
+  // GPU-composited and does NOT block the browser's LCP candidate detection —
+  // visibility:hidden causes the browser to skip the element as an LCP
+  // candidate entirely, inflating the LCP score by the full above-fold render.
+  return (
+    <Ctx.Provider value={{ lang, setLang, t, ready }}>
+      <div style={ready ? undefined : { opacity: 0 }}>{children}</div>
+    </Ctx.Provider>
+  );
 }
 
 export function useLang(): LangCtx {

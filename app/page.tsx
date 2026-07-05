@@ -6,6 +6,11 @@ import type { MapPoint } from "@/components/ListingsMap";
 import { LanguageProvider } from "@/components/LanguageProvider";
 import { FavoritesProvider } from "@/components/FavoritesProvider";
 
+// ISR: revalidate once per day, aligned with FRED data refresh.
+// The build output already shows "Revalidate: 1d" but this export makes the
+// intent explicit and ensures the segment config is canonical.
+export const revalidate = 86400;
+
 export default async function Home() {
   const market = await getMarket();
   const rate = market.mortgage30.value; // live FRED rate, drives the math
@@ -13,7 +18,10 @@ export default async function Home() {
   const neighborhoods = getNeighborhoods();
 
   // Score every listing once; reuse for the opportunity count and the map pins.
-  const analyzed = properties.map((p) => ({ p, a: analyzeProperty(p, rate) }));
+  // analyzeProperty is async (Claude AI path with rules-engine fallback).
+  const analyzed = await Promise.all(
+    properties.map(async (p) => ({ p, a: await analyzeProperty(p, rate) })),
+  );
   const prices = [...properties.map((p) => p.price)].sort((a, b) => a - b);
   const medianPrice = prices[Math.floor(prices.length / 2)];
   const opportunities = analyzed.filter(({ a }) => a.recommendation !== "Pass").length;

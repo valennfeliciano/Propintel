@@ -347,12 +347,15 @@ export default function Dashboard({
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((p) => (
+            {filtered.map((p, idx) => (
               <PropertyCard
                 key={p.id}
                 property={p}
                 onAnalyze={analyze}
                 isActive={panelProp?.id === p.id}
+                // First 3 cards are above the fold on all viewports; preload
+                // their images so the LCP element is never lazy-loaded.
+                priority={idx < 3}
               />
             ))}
           </div>

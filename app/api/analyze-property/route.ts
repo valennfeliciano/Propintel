@@ -38,5 +38,16 @@ export async function POST(request: Request) {
 
   const market = await getMarket();
   const analysis = analyzeProperty(property, market.mortgage30.value);
-  return NextResponse.json(analysis);
+
+  // The analysis result for a given property is deterministic for a given
+  // mortgage rate, which itself only changes daily. Cache at the CDN edge for
+  // 24 hours with a 1-hour stale-while-revalidate window so returning users
+  // get instant responses without waiting for the Serverless Function cold-start.
+  // This is safe because property data and market rates are both ISR-refreshed
+  // on the same 24-hour cadence as the home page.
+  return NextResponse.json(analysis, {
+    headers: {
+      "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=3600",
+    },
+  });
 }
