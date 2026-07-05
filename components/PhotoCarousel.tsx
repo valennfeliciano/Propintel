@@ -23,12 +23,17 @@ export default function PhotoCarousel({ photos, alt }: { photos: string[]; alt: 
 
   return (
     <div className="group relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
+      {/*
+       * No `key` here — a stable single <Image> lets React update the `src`
+       * prop in-place rather than unmounting and remounting the node on every
+       * slide change. Using key={i} (the old approach) caused a full teardown
+       * each time, producing layout flashes and redundant image re-requests.
+       */}
       <Image
-        key={i}
         src={photos[i]}
         alt={`${alt} — photo ${i + 1}`}
         fill
-        sizes="448px"
+        sizes="(max-width: 768px) 100vw, 448px"
         className="object-cover"
         unoptimized
         priority={i === 0}
@@ -41,9 +46,10 @@ export default function PhotoCarousel({ photos, alt }: { photos: string[]; alt: 
             {i + 1}/{n}
           </div>
           <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1.5">
-            {photos.map((_, k) => (
+            {/* Use the photo URL as key — stable across renders, unlike the index */}
+            {photos.map((photo, k) => (
               <button
-                key={k}
+                key={photo}
                 onClick={() => setI(k)}
                 aria-label={`Go to photo ${k + 1}`}
                 className={`h-1.5 rounded-full bg-white transition-all ${k === i ? "w-4" : "w-1.5 opacity-50 hover:opacity-80"}`}

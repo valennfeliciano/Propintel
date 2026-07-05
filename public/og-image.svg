@@ -1,0 +1,31 @@
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#064e3b;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#grad)"/>
+
+  <!-- House icon -->
+  <g transform="translate(80, 260)">
+    <polygon points="100,0 0,100 0,200 200,200 200,100" fill="#10b981" stroke="none"/>
+    <rect x="40" y="80" width="40" height="50" fill="#0f172a"/>
+    <rect x="120" y="80" width="40" height="50" fill="#0f172a"/>
+  </g>
+
+  <!-- Large emerald accent bar -->
+  <rect x="0" y="0" width="12" height="630" fill="#10b981"/>
+
+  <!-- Content box -->
+  <rect x="280" y="100" width="900" height="480" fill="rgba(255,255,255,0.05)" rx="20"/>
+
+  <!-- Circles for visual interest -->
+  <circle cx="150" cy="150" r="80" fill="#10b981" opacity="0.1"/>
+  <circle cx="1100" cy="500" r="120" fill="#10b981" opacity="0.08"/>
+
+  <!-- Bottom accent -->
+  <rect x="0" y="580" width="1200" height="50" fill="#10b981" opacity="0.15"/>
+</svg>

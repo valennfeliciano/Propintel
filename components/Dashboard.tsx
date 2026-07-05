@@ -38,7 +38,7 @@ export default function Dashboard({
   mapPoints: MapPoint[];
 }) {
   const { t } = useLang();
-  const { count: favCount, isFavorite } = useFavorites();
+  const { count: favCount, isFavorite, ready: favReady } = useFavorites();
   const [activeHood, setActiveHood] = useState<string>("All");
   const [savedOnly, setSavedOnly] = useState(false);
   const [sort, setSort] = useState<SortKey>("featured");
@@ -241,17 +241,24 @@ export default function Dashboard({
                 setSavedOnly(false);
               }}
             />
-            <button
-              onClick={() => setSavedOnly(true)}
-              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                savedOnly ? "bg-rose-500 text-white" : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
-              }`}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8z" />
-              </svg>
-              {t("controls.saved")} ({favCount})
-            </button>
+            {/* Hydration fix: only render once localStorage is available.
+                On the server (and the first client paint before useEffect fires), favCount
+                is always 0, which would mismatch the real count stored in localStorage.
+                Suppressing the button until `favReady` eliminates the 0→N flicker and
+                the React hydration warning. */}
+            {favReady && (
+              <button
+                onClick={() => setSavedOnly(true)}
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  savedOnly ? "bg-rose-500 text-white" : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8z" />
+                </svg>
+                {t("controls.saved")} ({favCount})
+              </button>
+            )}
             <div className="ml-auto flex items-center gap-2">
               <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5">
                 {(["grid", "map"] as const).map((v) => (
