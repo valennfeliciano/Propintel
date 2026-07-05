@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   }
 
   const market = await getMarket();
-  const analysis = analyzeProperty(property, market.mortgage30.value);
+  const analysis = await analyzeProperty(property, market.mortgage30.value);
 
   // The analysis result for a given property is deterministic for a given
   // mortgage rate, which itself only changes daily. Cache at the CDN edge for

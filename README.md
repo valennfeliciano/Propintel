@@ -173,6 +173,68 @@ scripts/                    # data build scripts
 
 ---
 
+## Production Hardening
+
+The most recent hardening pass (`75c48ed`) applied three fixes:
+
+1. **Hydration mismatch eliminated** — the Saved button now defers rendering
+   until `localStorage` is read, preventing the "Saved (0) → Saved (N)" flicker
+   and the React hydration warning it caused.
+2. **SEO infrastructure** — added `public/robots.txt`, `public/og-image.png`
+   (1200×630 social preview), and cleaned up `app/sitemap.ts` (removed
+   non-crawlable fragment and non-existent route entries).
+3. **Language toggle** — verified that `LanguageProvider` already used the
+   correct deferred-render pattern; no change required.
+
+See [FIXES.md](FIXES.md) for a detailed breakdown of each fix.
+
+---
+
+## Documentation
+
+| Guide | What it covers |
+|---|---|
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Deploy to Vercel, env vars, rollback, post-deploy checklist |
+| [DEVELOPMENT.md](DEVELOPMENT.md) | Local setup, project structure, patterns, adding features |
+| [AI.md](AI.md) | How to swap in Claude for real AI analysis |
+| [FIXES.md](FIXES.md) | The three production hardening fixes in detail |
+| [PROPERTY_URLS.md](PROPERTY_URLS.md) | How property views work; how to add `/property/[id]` routes |
+| [MONITORING.md](MONITORING.md) | Vercel Analytics, logs, FRED monitoring, alert setup |
+| [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | Build failures, hydration, FRED issues, map problems |
+
+---
+
+## What's New — AI Integration
+
+`lib/analysisService.ts` is the **swap point for AI**. The `analyzeProperty()`
+function is the only entry point for all analysis. Its return type
+(`AnalysisResult`) is the contract the entire UI depends on.
+
+To upgrade the app from rules-based scoring to real Claude analysis:
+1. Add `ANTHROPIC_API_KEY` to your environment.
+2. Replace the body of `analyzeProperty()` with a Claude API call.
+3. Return the same `AnalysisResult` shape.
+4. Nothing else changes — no API routes, no component updates.
+
+The `generatedBy` field in every result tells you whether the rules engine or
+a specific Claude model produced the analysis. See [AI.md](AI.md) for the
+complete implementation, cost estimates, and a working prompt template.
+
+---
+
+## Quick-Start Deployment
+
+```bash
+npm install
+vercel link
+vercel --prod
+```
+
+No environment variables are required for the demo. See [DEPLOYMENT.md](DEPLOYMENT.md)
+for the full guide including custom domains, rollback, and verification.
+
+---
+
 ## Disclaimer
 
 PropIntel is an educational tool. Its analysis is **not financial advice**.
