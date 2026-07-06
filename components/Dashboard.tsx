@@ -77,7 +77,7 @@ export default function Dashboard({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ propertyId: p.id }),
         }),
-        new Promise((r) => setTimeout(r, 350)),
+        new Promise((r) => setTimeout(r, 100)),
       ]);
       if (id !== reqId.current) return; // a newer request superseded this one
       if (!res.ok) throw new Error(`Request failed (${res.status})`);

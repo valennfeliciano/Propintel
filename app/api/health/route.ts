@@ -7,8 +7,22 @@ import snapshot from "@/data/market.json";
 
 export const dynamic = "force-dynamic"; // always a fresh response, never cached
 
-export async function GET() {
+export async function GET(req: Request) {
   const snap = snapshot as { mortgage30?: { asOf?: string }; _source?: string };
+
+  // Fast-path for cron warm-pings: skip the outbound FRED probe so the
+  // keep-warm request resolves in <10 ms instead of up to 4 s.
+  // The Vercel cron scheduler sets Authorization: Bearer <CRON_SECRET>.
+  const isCronPing =
+    req.headers.get("authorization") ===
+    `Bearer ${process.env.CRON_SECRET ?? ""}`;
+
+  if (isCronPing) {
+    return NextResponse.json(
+      { status: "ok", warm: true, timestamp: new Date().toISOString() },
+      { status: 200, headers: { "Cache-Control": "no-store" } }
+    );
+  }
 
   // Probe FRED reachability with a lightweight HEAD request (no body to parse).
   let fredReachable = false;
