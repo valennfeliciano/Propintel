@@ -6,6 +6,7 @@ import { useLang } from "./LanguageProvider";
 import { HeartButton } from "./FavoritesProvider";
 import PhotoCarousel from "./PhotoCarousel";
 import PropertyMap from "./PropertyMap";
+import ScoreGauge from "./ScoreGauge";
 
 function ScoreBar({ label, score }: { label: string; score: number }) {
   const tone = scoreTone(score);
@@ -268,7 +269,8 @@ export default function AnalysisPanel({
               <div>
                 <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{t("panel.location")}</h3>
                 <PropertyMap
-                  query={`${property.address}, ${property.city}, ${property.state} ${property.zip}`}
+                  lat={property.lat}
+                  lng={property.lng}
                   title={`Map of ${property.address}`}
                   className="h-72"
                 />
@@ -285,15 +287,16 @@ export default function AnalysisPanel({
             <aside className="lg:col-span-1">
               <div className="space-y-4 lg:sticky lg:top-6">
                 <div className="rounded-2xl border border-slate-200 p-5 shadow-sm">
-                  <div className={`flex items-center justify-between rounded-xl px-3 py-2.5 ring-1 ${rec!.bg} ${rec!.ring}`}>
-                    <span className={`flex items-center gap-2 text-base font-bold ${rec!.text}`}>
-                      <span className={`h-2.5 w-2.5 rounded-full ${rec!.dot}`} />
-                      {t(`verdict.${analysis.recommendation}`)}
-                    </span>
-                    <span>
-                      <span className="font-mono text-2xl font-bold text-slate-900">{analysis.overallScore}</span>
-                      <span className="ml-1 text-xs text-slate-400">/100</span>
-                    </span>
+                  <div className={`flex items-center gap-4 rounded-xl px-4 py-4 ring-1 ${rec!.bg} ${rec!.ring}`}>
+                    <ScoreGauge score={analysis.overallScore} tone={rec!} />
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">{t("panel.dealScore")}</p>
+                      <p className={`flex items-center gap-1.5 text-lg font-bold leading-tight ${rec!.text}`}>
+                        <span className={`h-2 w-2 rounded-full ${rec!.dot}`} />
+                        {t(`verdict.${analysis.recommendation}`)}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-400">{t("panel.dealScoreHint")}</p>
+                    </div>
                   </div>
 
                   <dl className="mt-4 grid grid-cols-3 gap-2 text-center">

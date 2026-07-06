@@ -36,3 +36,9 @@ body {
 .animate-shimmer {
   animation: shimmer 1.4s infinite;
 }
+
+@keyframes gauge-fill {
+  to {
+    stroke-dashoffset: var(--gauge-offset);
+  }
+}

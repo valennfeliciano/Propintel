@@ -10,6 +10,7 @@ import { usd, usdCompact, scoreTone, recTone } from "@/lib/format";
 import PropertyMap from "@/components/PropertyMap";
 import PhotoCarousel from "@/components/PhotoCarousel";
 import ShareButton from "@/components/ShareButton";
+import ScoreGauge from "@/components/ScoreGauge";
 
 const BASE_URL = "https://property-intelligence-nu.vercel.app";
 
@@ -378,7 +379,8 @@ export default async function PropertyPage({
             <div>
               <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Location</h2>
               <PropertyMap
-                query={`${property.address}, ${property.city}, ${property.state} ${property.zip}`}
+                lat={property.lat}
+                lng={property.lng}
                 title={`Map of ${property.address}`}
                 className="h-72"
               />
@@ -396,15 +398,16 @@ export default async function PropertyPage({
           <aside className="lg:col-span-1">
             <div className="space-y-4 lg:sticky lg:top-20">
               <div className="rounded-2xl border border-slate-200 p-5 shadow-sm">
-                <div className={`flex items-center justify-between rounded-xl px-3 py-2.5 ring-1 ${rec.bg} ${rec.ring}`}>
-                  <span className={`flex items-center gap-2 text-base font-bold ${rec.text}`}>
-                    <span className={`h-2.5 w-2.5 rounded-full ${rec.dot}`} />
-                    {analysis.recommendation}
-                  </span>
-                  <span>
-                    <span className="font-mono text-2xl font-bold text-slate-900">{analysis.overallScore}</span>
-                    <span className="ml-1 text-xs text-slate-400">/100</span>
-                  </span>
+                <div className={`flex items-center gap-4 rounded-xl px-4 py-4 ring-1 ${rec.bg} ${rec.ring}`}>
+                  <ScoreGauge score={analysis.overallScore} tone={rec} />
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Deal score</p>
+                    <p className={`flex items-center gap-1.5 text-lg font-bold leading-tight ${rec.text}`}>
+                      <span className={`h-2 w-2 rounded-full ${rec.dot}`} />
+                      {analysis.recommendation}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">out of 100, weighted value + opportunity</p>
+                  </div>
                 </div>
 
                 <dl className="mt-4 grid grid-cols-3 gap-2 text-center">

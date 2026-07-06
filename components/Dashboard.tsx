@@ -45,6 +45,8 @@ export default function Dashboard({
   const [view, setView] = useState<"grid" | "map">("grid");
   const [search, setSearch] = useState("");
   const [hideControls, setHideControls] = useState(false);
+  const [hoodMenuOpen, setHoodMenuOpen] = useState(false);
+  const hoodMenuRef = useRef<HTMLDivElement>(null);
 
   const [panelProp, setPanelProp] = useState<Property | null>(null);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
@@ -98,6 +100,21 @@ export default function Dashboard({
     return () => window.removeEventListener("keydown", onKey);
   }, [panelProp, close]);
 
+  // Close the "more neighborhoods" dropdown on outside click or Escape.
+  useEffect(() => {
+    if (!hoodMenuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (hoodMenuRef.current && !hoodMenuRef.current.contains(e.target as Node)) setHoodMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setHoodMenuOpen(false);
+    window.addEventListener("mousedown", onClick);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onClick);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [hoodMenuOpen]);
+
   // Auto-hide the (tall) filter bar on scroll-down; reveal on scroll-up, near
   // the top, or when the mouse approaches the top edge. Keeps listings visible
   // while scrolling (especially on mobile) without losing the filters.
@@ -143,6 +160,19 @@ export default function Dashboard({
       }
     });
   const visibleIds = new Set(filtered.map((p) => p.id));
+
+  // Show only the top neighborhoods inline (by listing count) plus a "More"
+  // dropdown for the rest — 29 simultaneous pills was too many choices to
+  // scan at once, especially on mobile where most were cut off mid-scroll.
+  // If the active selection lives in the overflow, pin it into the visible
+  // row so the current filter is never hidden behind the dropdown.
+  const TOP_HOODS = 6;
+  const pinned = neighborhoods.find((n) => n.name === activeHood);
+  let visibleHoods = neighborhoods.slice(0, TOP_HOODS);
+  if (pinned && !visibleHoods.some((n) => n.name === pinned.name)) {
+    visibleHoods = [pinned, ...visibleHoods.slice(0, TOP_HOODS - 1)];
+  }
+  const overflowHoods = neighborhoods.filter((n) => !visibleHoods.some((v) => v.name === n.name));
 
   return (
     <div className="flex flex-col">
@@ -290,10 +320,11 @@ export default function Dashboard({
               )}
             </div>
           </div>
-          {/* Row 2: neighborhoods in a single horizontal-scroll strip (keeps the
-              bar compact — no more wall of pills covering the listings) */}
-          <div className="mt-2 -mx-5 flex gap-2 overflow-x-auto px-5 pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {neighborhoods.map((n) => (
+          {/* Row 2: top neighborhoods by listing count, plus a "More" dropdown
+              for the rest — scanning 29 pills at once was too many choices,
+              especially on mobile where most were cut off mid-scroll. */}
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {visibleHoods.map((n) => (
               <FilterPill
                 key={n.name}
                 label={`${n.name} (${n.count})`}
@@ -304,6 +335,44 @@ export default function Dashboard({
                 }}
               />
             ))}
+            {overflowHoods.length > 0 && (
+              <div className="relative" ref={hoodMenuRef}>
+                <button
+                  onClick={() => setHoodMenuOpen((v) => !v)}
+                  aria-expanded={hoodMenuOpen}
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    hoodMenuOpen || (pinned == null && overflowHoods.some((n) => n.name === activeHood))
+                      ? "bg-emerald-600 text-white"
+                      : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  {t("controls.moreHoods", { n: overflowHoods.length })}
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d={hoodMenuOpen ? "m18 15-6-6-6 6" : "m6 9 6 6 6-6"} />
+                  </svg>
+                </button>
+                {hoodMenuOpen && (
+                  <div className="absolute right-0 top-full z-30 mt-1.5 max-h-72 w-64 max-w-[calc(100vw-2.5rem)] overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+                    {overflowHoods.map((n) => (
+                      <button
+                        key={n.name}
+                        onClick={() => {
+                          setActiveHood(n.name);
+                          setSavedOnly(false);
+                          setHoodMenuOpen(false);
+                        }}
+                        className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors ${
+                          activeHood === n.name ? "bg-emerald-50 text-emerald-700" : "text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        <span>{n.name}</span>
+                        <span className="text-slate-400">{n.count}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

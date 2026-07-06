@@ -23,6 +23,7 @@ const en: Dict = {
   "hero.realData": "Real Zillow data, verified",
 
   "controls.all": "All",
+  "controls.moreHoods": "More ({n})",
   "controls.showing": "Showing {n} {scope}",
   "controls.scope.all": "properties",
   "controls.scope.in": "in {name}",
@@ -59,6 +60,8 @@ const en: Dict = {
   "card.vsComps": "vs comps",
 
   "panel.overall": "overall",
+  "panel.dealScore": "Deal score",
+  "panel.dealScoreHint": "out of 100, weighted value + opportunity",
   "panel.value": "Value (vs. comps)",
   "panel.opportunity": "Opportunity (upside)",
   "panel.underwriting": "Underwriting",
@@ -172,6 +175,7 @@ const es: Dict = {
   "hero.realData": "Datos reales de Zillow, verificados",
 
   "controls.all": "Todas",
+  "controls.moreHoods": "Más ({n})",
   "controls.showing": "Mostrando {n} {scope}",
   "controls.scope.all": "propiedades",
   "controls.scope.in": "en {name}",
@@ -208,6 +212,8 @@ const es: Dict = {
   "card.vsComps": "vs comp.",
 
   "panel.overall": "global",
+  "panel.dealScore": "Puntaje del trato",
+  "panel.dealScoreHint": "sobre 100, valor + oportunidad ponderados",
   "panel.value": "Valor (vs. comparables)",
   "panel.opportunity": "Oportunidad (potencial)",
   "panel.underwriting": "Análisis financiero",

@@ -18,13 +18,19 @@ export const usdCompact = (n: number) => {
 
 export const num = (n: number) => n.toLocaleString("en-US");
 
-/** 0–100 score → a tailwind text/bg/ring palette. */
+/**
+ * 0–100 score → a tailwind text/bg/ring palette.
+ * Low scores use neutral slate, not rose: a weak Value/Opportunity score means
+ * "not attractive," not "danger" — rose stays reserved for actual monetary
+ * loss and risk flags elsewhere, so a "Pass" verdict never sits under a wall
+ * of alarm-red bars.
+ */
 export function scoreTone(score: number) {
   if (score >= 70)
     return { text: "text-emerald-700", bg: "bg-emerald-50", ring: "ring-emerald-200", bar: "bg-emerald-500" };
   if (score >= 50)
     return { text: "text-amber-700", bg: "bg-amber-50", ring: "ring-amber-200", bar: "bg-amber-500" };
-  return { text: "text-rose-700", bg: "bg-rose-50", ring: "ring-rose-200", bar: "bg-rose-500" };
+  return { text: "text-slate-500", bg: "bg-slate-100", ring: "ring-slate-200", bar: "bg-slate-400" };
 }
 
 export function recTone(rec: Recommendation) {
